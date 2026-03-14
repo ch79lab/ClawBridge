@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(curl -s http://localhost:11434/api/tags)",
+      "WebSearch",
+      "Bash(env)",
+      "Bash(brew list:*)",
+      "Bash(cat ~/.ollama/logs/*.log)",
+      "Bash(npm list:*)",
+      "Bash(find /Users/charleshansen/Projects -maxdepth 3 -type d -name *openclaw* -o -name *open-claw*)",
+      "Bash(xargs ls:*)",
+      "Bash(grep -l \"openclaw\\\\|open-claw\" /Users/charleshansen/Projects/ClawBridge/*)",
+      "Bash(ls -lah /Users/charleshansen/Downloads/openclaw*)",
+      "Bash(/usr/local/bin/ollama --version)",
+      "Bash(find /Users/charleshansen/Downloads/openclaw -type f -name package.json -o -name docker-compose* -o -name README*)",
+      "Bash(find /Users/charleshansen -type f -name docker-compose*)",
+      "WebFetch(domain:docs.ollama.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ollama.com)",
+      "Bash(npm install:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx tsc:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://127.0.0.1:8402/health)"
+    ]
+  }
+}
