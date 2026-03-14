@@ -4,7 +4,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { getPort, isShadowMode, getAnthropicBaseUrl, getAnthropicApiKey } from './config.js';
+import { getPort, isShadowMode, getAnthropicBaseUrl, getAnthropicApiKey, routingConfig } from './config.js';
 import { log, withRequestContext } from './logger.js';
 import { route } from './router.js';
 import { executeWithFallback } from './fallback.js';
@@ -129,6 +129,27 @@ async function handleRequest(
       shadow: isShadowMode(),
       uptime: process.uptime(),
     }));
+    return;
+  }
+
+  // ClawBridge models endpoint — lists all configured models across providers
+  if (clientReq.url === '/v1/clawbridge/models' && clientReq.method === 'GET') {
+    const seen = new Set<string>();
+    const models: Array<{ model: string; upstream: string; categories: string[] }> = [];
+
+    for (const [category, route] of Object.entries(routingConfig.routes)) {
+      const key = `${route.model}@${route.upstream}`;
+      if (seen.has(key)) {
+        const existing = models.find(m => m.model === route.model && m.upstream === route.upstream);
+        existing?.categories.push(category);
+      } else {
+        seen.add(key);
+        models.push({ model: route.model, upstream: route.upstream, categories: [category] });
+      }
+    }
+
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify({ models }, null, 2));
     return;
   }
 
