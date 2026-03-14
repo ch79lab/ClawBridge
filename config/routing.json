@@ -53,10 +53,10 @@
 
   "privacy": {
     "keywords": [
-      "confidencial", "sensível", "interno", "contrato", "nda",
+      "confidencial", "sensível", "contrato", "nda",
       "senha", "password", "passwd", "segredo", "secret",
       "credencial", "credential", "api key", "chave privada",
-      "private key", "confidential", "sensitive", "internal",
+      "private key", "confidential", "sensitive",
       "do not send to cloud", "não envie para cloud", "não enviar para nuvem",
       "keep local", "manter local"
     ],

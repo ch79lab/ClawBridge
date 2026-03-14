@@ -30,13 +30,8 @@ Rules:
 - If sensitive AND asks for recommendation/risks/decision, choose private_complex.
 - Output ONLY the label. No punctuation. No explanation.`;
 
-// Non-private categories only (T0 is called after privacy gate)
-const VALID_T0_CATEGORIES: readonly Category[] = [
-  'complex',
-  'analysis',
-  'action',
-  'batch',
-] as const;
+// All categories — T0 may detect privacy that rules missed
+const VALID_T0_CATEGORIES: readonly Category[] = CATEGORIES;
 
 export async function classifyByT0(
   message: string,
@@ -83,7 +78,7 @@ export async function classifyByT0(
 
     // Validate against known categories
     const matched = CATEGORIES.find(c => raw === c || raw.startsWith(c));
-    if (matched && VALID_T0_CATEGORIES.includes(matched as (typeof VALID_T0_CATEGORIES)[number])) {
+    if (matched) {
       log.info({ msg: 't0_classified', category: matched, raw, latency_ms: latency });
       return {
         category: matched,

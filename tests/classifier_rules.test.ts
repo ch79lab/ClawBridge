@@ -76,7 +76,7 @@ describe('classifier_rules', () => {
 
     it('routes sensitive + "trade-off" to private_complex', () => {
       const result = classifyByRules(
-        'dado interno, avalie o trade-off entre as opções',
+        'dado confidencial, avalie o trade-off entre as opções',
         config,
       );
       expect(result.category).toBe('private_complex');

@@ -27,7 +27,9 @@
       "Bash(gh auth:*)",
       "Bash(brew install:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh repo:*)",
+      "Bash(git push:*)"
     ]
   }
 }
