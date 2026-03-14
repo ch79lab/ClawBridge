@@ -45,7 +45,7 @@
   ],
 
   "classifier": {
-    "rules_to_t0_threshold": 0.75,
+    "rules_to_t0_threshold": 0,
     "escalation_threshold": 0.55,
     "t0_model": "qwen3.5:9b",
     "t0_timeout_ms": 10000
