@@ -86,8 +86,12 @@ export function getAnthropicBaseUrl(): string {
 
 export function getGoogleApiKey(): string {
   const key = process.env.GOOGLE_API_KEY;
-  if (!key) throw new Error('[FATAL] GOOGLE_API_KEY is required');
+  if (!key) throw new Error('[FATAL] GOOGLE_API_KEY is required. Set it in .env or remove Google routes from routing.json');
   return key;
+}
+
+export function hasGoogleApiKey(): boolean {
+  return !!process.env.GOOGLE_API_KEY;
 }
 
 export function getLogLevel(): string {

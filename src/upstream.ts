@@ -4,7 +4,7 @@
 
 import { request as httpRequest, type IncomingMessage, type ServerResponse } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { getAnthropicApiKey, getAnthropicBaseUrl, getGoogleApiKey, getOllamaUrl } from './config.js';
+import { getAnthropicApiKey, getAnthropicBaseUrl, getGoogleApiKey, getOllamaUrl, hasGoogleApiKey } from './config.js';
 import { log } from './logger.js';
 import type { AnthropicRequestBody, UpstreamResult } from './types.js';
 
@@ -181,6 +181,9 @@ export async function proxyToGoogle(
   model: string,
   timeoutMs: number,
 ): Promise<UpstreamResult> {
+  if (!hasGoogleApiKey()) {
+    return { ok: false, error: 'GOOGLE_API_KEY not configured' };
+  }
   const apiKey = getGoogleApiKey();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const payload = JSON.stringify(toGeminiBody(body));
