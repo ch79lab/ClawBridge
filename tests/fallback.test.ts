@@ -41,7 +41,7 @@ const fakeBody = {
 function makeDecision(overrides?: Partial<RoutingDecision>): RoutingDecision {
   return {
     category: 'analysis',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     upstream: 'google',
     timeoutMs: 45000,
     thinking: false,
@@ -69,7 +69,7 @@ describe('fallback', () => {
 
     const result = await executeWithFallback(fakeReq, fakeRes, fakeBody, makeDecision());
     expect(result.fallbackUsed).toBe(false);
-    expect(result.finalModel).toBe('gemini-2.0-flash');
+    expect(result.finalModel).toBe('gemini-2.5-flash');
     expect(result.finalUpstream).toBe('google');
     expect(result.result.ok).toBe(true);
   });

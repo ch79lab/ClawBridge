@@ -121,7 +121,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('analysis');
     expect(decision.upstream).toBe('google');
-    expect(decision.model).toBe('gemini-2.0-flash');
+    expect(decision.model).toBe('gemini-2.5-flash');
   });
 
   it('routes complex keywords to anthropic/sonnet', async () => {
@@ -148,7 +148,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('batch');
     expect(decision.upstream).toBe('google');
-    expect(decision.model).toBe('gemini-2.0-flash-lite');
+    expect(decision.model).toBe('gemini-2.5-flash-lite');
   });
 
   it('privacy gate overrides everything', async () => {
