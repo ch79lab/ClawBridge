@@ -22,7 +22,12 @@
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(curl -s http://127.0.0.1:8402/health)"
+      "Bash(curl -s http://127.0.0.1:8402/health)",
+      "Bash(git init:*)",
+      "Bash(gh auth:*)",
+      "Bash(brew install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
