@@ -69,6 +69,52 @@ function passthrough(
   req.end();
 }
 
+// ── SSE wrapper (converts buffered JSON to Anthropic streaming format) ──
+
+function sendAsSSE(res: ServerResponse, jsonBody: string): void {
+  const msg = JSON.parse(jsonBody) as Record<string, unknown>;
+  const content = msg.content as Array<Record<string, unknown>> | undefined;
+  const text = content?.[0]?.text as string || '';
+  const usage = msg.usage as Record<string, number> | undefined;
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+
+  // message_start
+  res.write(`event: message_start\ndata: ${JSON.stringify({
+    type: 'message_start',
+    message: { id: msg.id, type: 'message', role: 'assistant', content: [], model: msg.model, stop_reason: null, usage: { input_tokens: usage?.input_tokens || 0, output_tokens: 0 } },
+  })}\n\n`);
+
+  // content_block_start
+  res.write(`event: content_block_start\ndata: ${JSON.stringify({
+    type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' },
+  })}\n\n`);
+
+  // content_block_delta (send full text in one delta)
+  res.write(`event: content_block_delta\ndata: ${JSON.stringify({
+    type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text },
+  })}\n\n`);
+
+  // content_block_stop
+  res.write(`event: content_block_stop\ndata: ${JSON.stringify({
+    type: 'content_block_stop', index: 0,
+  })}\n\n`);
+
+  // message_delta
+  res.write(`event: message_delta\ndata: ${JSON.stringify({
+    type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: usage?.output_tokens || 0 },
+  })}\n\n`);
+
+  // message_stop
+  res.write(`event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n`);
+
+  res.end();
+}
+
 // ── Request handler ─────────────────────────────────────────
 
 async function handleRequest(
@@ -177,8 +223,13 @@ async function handleRequest(
     // Send response
     if (!clientRes.headersSent) {
       if (fallbackResult.result.ok) {
-        clientRes.writeHead(200, { 'Content-Type': 'application/json' });
-        clientRes.end(fallbackResult.result.body);
+        if (clientWantsStream) {
+          // Convert buffered response to Anthropic SSE format
+          sendAsSSE(clientRes, fallbackResult.result.body || '{}');
+        } else {
+          clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+          clientRes.end(fallbackResult.result.body);
+        }
       } else {
         const status = fallbackResult.result.status || 502;
         clientRes.writeHead(status, { 'Content-Type': 'application/json' });
