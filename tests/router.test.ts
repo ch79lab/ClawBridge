@@ -112,7 +112,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('private_complex');
     expect(decision.upstream).toBe('ollama');
-    expect(decision.thinking).toBe(true);
+    expect(decision.thinking).toBe(false);
   });
 
   it('routes analysis keywords to google/gemini-flash', async () => {

@@ -34,7 +34,7 @@
       "model": "qwen3.5:9b",
       "upstream": "ollama",
       "timeoutMs": 60000,
-      "thinking": true
+      "thinking": false
     }
   },
 
