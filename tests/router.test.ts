@@ -160,11 +160,10 @@ describe('router', () => {
     expect(decision.upstream).toBe('ollama');
   });
 
-  it('uses T0 classifier when rules confidence is low', async () => {
-    // A generic message should have low confidence from rules
+  it('skips T0 classifier when threshold is 0', async () => {
+    // With rules_to_t0_threshold=0, T0 is never called
     const decision = await route(makeBody('what should I do about this?'));
-    // T0 should have been called since rules confidence is low
-    expect(decision.decision_trace.classifier_used).toBe(true);
+    expect(decision.decision_trace.classifier_used).toBe(false);
   });
 
   it('does NOT use T0 for private content', async () => {

@@ -108,6 +108,10 @@ async function handleRequest(
       return;
     }
 
+    // Force non-streaming — ClawBridge buffers responses
+    const clientWantsStream = body.stream === true;
+    body.stream = false;
+
     // Route
     const decision = await route(body);
 
