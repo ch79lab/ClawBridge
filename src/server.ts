@@ -108,35 +108,56 @@ async function handleRequest(
       return;
     }
 
-    // Force non-streaming — ClawBridge buffers responses
     const clientWantsStream = body.stream === true;
-    body.stream = false;
 
-    // Route
+    // Route (classify without modifying the body)
     const decision = await route(body);
+
+    // Log the routing decision
+    const userText = (body.messages || [])
+      .filter(m => m.role === 'user')
+      .map(m => typeof m.content === 'string' ? m.content : '')
+      .join(' ');
+
+    log.info({
+      msg: 'route_decision',
+      request_id: requestId,
+      category: decision.category,
+      model: decision.model,
+      upstream: decision.upstream,
+      confidence: decision.confidence,
+      streaming: clientWantsStream,
+    });
 
     // Shadow mode: log decision but passthrough to Anthropic
     if (isShadowMode()) {
-      log.info({
-        msg: 'shadow_mode',
-        category: decision.category,
-        model: decision.model,
-        confidence: decision.confidence,
-      });
       passthrough(clientReq, clientRes, JSON.stringify(body));
       return;
     }
+
+    // Anthropic upstream: pipe directly (preserves streaming)
+    if (decision.upstream === 'anthropic') {
+      const pipeBody = { ...body, model: decision.model };
+      passthrough(clientReq, clientRes, JSON.stringify(pipeBody));
+      log.info({
+        msg: 'request_complete',
+        request_id: requestId,
+        category: decision.category,
+        primary_model: decision.model,
+        final_model: decision.model,
+        latency_ms: Date.now() - startTime,
+        piped: true,
+      });
+      return;
+    }
+
+    // Non-Anthropic upstream (Google, Ollama): buffer mode, no streaming
+    body.stream = false;
 
     // Execute with fallback
     const fallbackResult = await executeWithFallback(clientReq, clientRes, body, decision);
 
     const latencyMs = Date.now() - startTime;
-
-    // Log the full entry
-    const userText = (body.messages || [])
-      .filter(m => m.role === 'user')
-      .map(m => typeof m.content === 'string' ? m.content : '')
-      .join(' ');
 
     log.info({
       msg: 'request_complete',
@@ -148,7 +169,6 @@ async function handleRequest(
       fallback_used: fallbackResult.fallbackUsed,
       fallback_steps: fallbackResult.attempts.length - 1,
       latency_ms: latencyMs,
-      t0_latency_ms: decision.decision_trace.t0_latency_ms,
       token_estimate_in: estimateTokens(userText),
       decision_trace: decision.decision_trace,
     });
