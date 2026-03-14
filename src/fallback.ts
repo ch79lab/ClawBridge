@@ -23,10 +23,11 @@ async function callUpstream(
   upstream: string,
   timeoutMs: number,
   thinking: boolean,
+  maxSystemChars?: number,
 ): Promise<UpstreamResult> {
   switch (upstream) {
     case 'ollama':
-      return proxyToOllama(body, model, thinking, timeoutMs);
+      return proxyToOllama(body, model, thinking, timeoutMs, maxSystemChars);
     case 'google':
       return proxyToGoogle(body, model, timeoutMs);
     case 'anthropic':
@@ -54,6 +55,9 @@ export async function executeWithFallback(
   decision: RoutingDecision,
 ): Promise<FallbackResult> {
   const attempts: string[] = [];
+
+  // Truncate system prompt for simple private requests to reduce Ollama latency
+  const maxSystemChars = decision.category === 'private_simple' ? 512 : undefined;
 
   // Build the full chain: primary + fallback steps
   const chain: Array<{ model: string; upstream: string; timeoutMs: number; thinking: boolean }> = [
@@ -89,6 +93,7 @@ export async function executeWithFallback(
           step.upstream,
           step.timeoutMs,
           step.thinking,
+          step.upstream === 'ollama' ? maxSystemChars : undefined,
         );
 
         if (result.ok) {

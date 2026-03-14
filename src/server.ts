@@ -187,6 +187,10 @@ async function handleRequest(
       .map(m => typeof m.content === 'string' ? m.content : '')
       .join(' ');
 
+    const systemLength = body.system
+      ? (typeof body.system === 'string' ? body.system.length : JSON.stringify(body.system).length)
+      : 0;
+
     log.info({
       msg: 'route_decision',
       request_id: requestId,
@@ -195,6 +199,7 @@ async function handleRequest(
       upstream: decision.upstream,
       confidence: decision.confidence,
       streaming: clientWantsStream,
+      system_prompt_chars: systemLength,
     });
 
     // Shadow mode: log decision but passthrough to Anthropic
