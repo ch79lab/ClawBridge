@@ -47,7 +47,7 @@ vi.mock('../src/logger.js', () => ({
 
 function makeBody(text: string): AnthropicRequestBody {
   return {
-    model: 'claude-sonnet-4-5-20241022',
+    model: 'claude-sonnet-4-5-20250514',
     messages: [{ role: 'user', content: text }],
     max_tokens: 1024,
   };
@@ -130,7 +130,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('complex');
     expect(decision.upstream).toBe('anthropic');
-    expect(decision.model).toBe('claude-sonnet-4-5-20241022');
+    expect(decision.model).toBe('claude-sonnet-4-5-20250514');
   });
 
   it('routes action keywords to anthropic/haiku', async () => {
@@ -139,7 +139,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('action');
     expect(decision.upstream).toBe('anthropic');
-    expect(decision.model).toBe('claude-haiku-4-5-20241022');
+    expect(decision.model).toBe('claude-haiku-4-5-20250514');
   });
 
   it('routes batch keywords to google/flash-lite', async () => {

@@ -1,7 +1,7 @@
 {
   "routes": {
     "complex": {
-      "model": "claude-sonnet-4-5-20241022",
+      "model": "claude-sonnet-4-5-20250514",
       "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
@@ -13,7 +13,7 @@
       "thinking": false
     },
     "action": {
-      "model": "claude-haiku-4-5-20241022",
+      "model": "claude-haiku-4-5-20250514",
       "upstream": "anthropic",
       "timeoutMs": 30000,
       "thinking": false
@@ -40,7 +40,7 @@
 
   "fallback_chain": [
     { "model": "gemini-2.0-flash", "upstream": "google", "timeoutMs": 45000 },
-    { "model": "claude-haiku-4-5-20241022", "upstream": "anthropic", "timeoutMs": 30000 },
+    { "model": "claude-haiku-4-5-20250514", "upstream": "anthropic", "timeoutMs": 30000 },
     { "model": "qwen3.5:9b", "upstream": "ollama", "timeoutMs": 60000 }
   ],
 
