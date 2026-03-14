@@ -27,13 +27,13 @@
     "private_simple": {
       "model": "qwen3.5:9b",
       "upstream": "ollama",
-      "timeoutMs": 30000,
+      "timeoutMs": 120000,
       "thinking": false
     },
     "private_complex": {
       "model": "qwen3.5:9b",
       "upstream": "ollama",
-      "timeoutMs": 60000,
+      "timeoutMs": 120000,
       "thinking": false
     }
   },
