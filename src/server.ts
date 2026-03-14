@@ -39,6 +39,7 @@ function passthrough(
     ...clientReq.headers,
     host: baseUrl.hostname,
     'x-api-key': getAnthropicApiKey(),
+    'content-length': String(Buffer.byteLength(rawBody)),
   };
 
   const req = requester(
