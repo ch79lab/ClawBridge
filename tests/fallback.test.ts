@@ -47,7 +47,7 @@ function makeDecision(overrides?: Partial<RoutingDecision>): RoutingDecision {
     thinking: false,
     confidence: 0.9,
     fallback_chain: [
-      { model: 'claude-haiku-4-5-20250514', upstream: 'anthropic', timeoutMs: 30000 },
+      { model: 'claude-haiku-4-5', upstream: 'anthropic', timeoutMs: 30000 },
       { model: 'qwen3.5:9b', upstream: 'ollama', timeoutMs: 60000 },
     ],
     decision_trace: {
@@ -82,7 +82,7 @@ describe('fallback', () => {
 
     const result = await executeWithFallback(fakeReq, fakeRes, fakeBody, makeDecision());
     expect(result.fallbackUsed).toBe(true);
-    expect(result.finalModel).toBe('claude-haiku-4-5-20250514');
+    expect(result.finalModel).toBe('claude-haiku-4-5');
     expect(result.finalUpstream).toBe('anthropic');
   });
 
@@ -92,7 +92,7 @@ describe('fallback', () => {
 
     const result = await executeWithFallback(fakeReq, fakeRes, fakeBody, makeDecision());
     expect(result.fallbackUsed).toBe(true);
-    expect(result.finalModel).toBe('claude-haiku-4-5-20250514');
+    expect(result.finalModel).toBe('claude-haiku-4-5');
   });
 
   it('does NOT retry or fallback on 4xx (except 429)', async () => {
