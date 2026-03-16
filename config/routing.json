@@ -31,15 +31,15 @@
       "thinking": false
     },
     "private_simple": {
-      "model": "qwen3.5:9b",
-      "upstream": "ollama",
-      "timeoutMs": 120000,
+      "model": "claude-haiku-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 30000,
       "thinking": false
     },
     "private_complex": {
-      "model": "qwen3.5:9b",
-      "upstream": "ollama",
-      "timeoutMs": 120000,
+      "model": "claude-sonnet-4-6",
+      "upstream": "anthropic",
+      "timeoutMs": 60000,
       "thinking": false
     }
   },
@@ -53,17 +53,12 @@
       "model": "claude-haiku-4-5",
       "upstream": "anthropic",
       "timeoutMs": 30000
-    },
-    {
-      "model": "qwen3.5:9b",
-      "upstream": "ollama",
-      "timeoutMs": 60000
     }
   ],
   "classifier": {
     "rules_to_t0_threshold": 0,
     "escalation_threshold": 0,
-    "t0_model": "qwen3.5:9b",
+    "t0_model": "claude-haiku-4-5",
     "t0_timeout_ms": 10000
   },
   "privacy": {
