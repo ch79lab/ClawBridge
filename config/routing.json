@@ -1,5 +1,11 @@
 {
   "routes": {
+    "default": {
+      "model": "claude-haiku-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 30000,
+      "thinking": false
+    },
     "complex": {
       "model": "claude-sonnet-4-5",
       "upstream": "anthropic",
@@ -37,28 +43,52 @@
       "thinking": false
     }
   },
-
   "fallback_chain": [
-    { "model": "gemini-2.5-flash", "upstream": "google", "timeoutMs": 45000 },
-    { "model": "claude-haiku-4-5", "upstream": "anthropic", "timeoutMs": 30000 },
-    { "model": "qwen3.5:9b", "upstream": "ollama", "timeoutMs": 60000 }
+    {
+      "model": "gemini-2.5-flash",
+      "upstream": "google",
+      "timeoutMs": 45000
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 30000
+    },
+    {
+      "model": "qwen3.5:9b",
+      "upstream": "ollama",
+      "timeoutMs": 60000
+    }
   ],
-
   "classifier": {
     "rules_to_t0_threshold": 0,
-    "escalation_threshold": 0.3,
+    "escalation_threshold": 0,
     "t0_model": "qwen3.5:9b",
     "t0_timeout_ms": 10000
   },
-
   "privacy": {
     "keywords": [
-      "confidencial", "sensível", "contrato", "nda",
-      "senha", "password", "passwd", "segredo", "secret",
-      "credencial", "credential", "api key", "chave privada",
-      "private key", "confidential", "sensitive",
-      "do not send to cloud", "não envie para cloud", "não enviar para nuvem",
-      "keep local", "manter local"
+      "confidencial",
+      "sensível",
+      "contrato",
+      "nda",
+      "senha",
+      "password",
+      "passwd",
+      "segredo",
+      "secret",
+      "credencial",
+      "credential",
+      "api key",
+      "chave privada",
+      "private key",
+      "confidential",
+      "sensitive",
+      "do not send to cloud",
+      "não envie para cloud",
+      "não enviar para nuvem",
+      "keep local",
+      "manter local"
     ],
     "pii_regexes": [
       "(?<!\\d)\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}(?!\\d)",
@@ -74,47 +104,129 @@
       "ssh-(?:rsa|ed25519|ecdsa)\\s"
     ],
     "complexity_keywords": [
-      "decide", "decisão", "trade-off", "tradeoff",
-      "estratégia", "strategy", "risco", "risk",
-      "recomende", "recommend", "recomendação",
-      "analise", "analyze", "avalie", "evaluate",
-      "compare", "pondere", "arquitetura", "architecture"
+      "decide",
+      "decisão",
+      "trade-off",
+      "tradeoff",
+      "estratégia",
+      "strategy",
+      "risco",
+      "risk",
+      "recomende",
+      "recommend",
+      "recomendação",
+      "analise",
+      "analyze",
+      "avalie",
+      "evaluate",
+      "compare",
+      "pondere",
+      "arquitetura",
+      "architecture"
     ]
   },
-
   "rules": {
     "complex": [
-      "arquitetura", "architecture", "trade-off", "tradeoff",
-      "estratégia", "strategy", "decisão", "decision",
-      "refatorar", "refactor", "redesenhe", "redesign",
-      "prós e contras", "vantagens e desvantagens",
-      "migração", "migration", "escalabilidade", "scalability",
-      "considere", "pondere", "ambiguidade", "ambiguity"
+      "arquitetura",
+      "architecture",
+      "trade-off",
+      "tradeoff",
+      "estratégia",
+      "strategy",
+      "decisão",
+      "decision",
+      "refatorar",
+      "refactor",
+      "redesenhe",
+      "redesign",
+      "prós e contras",
+      "vantagens e desvantagens",
+      "migração",
+      "migration",
+      "escalabilidade",
+      "scalability",
+      "considere",
+      "pondere",
+      "ambiguidade",
+      "ambiguity"
     ],
     "analysis": [
-      "analise", "análise", "analyze", "analysis",
-      "resuma", "resumo", "summarize", "summary",
-      "compare", "comparar", "comparação",
-      "sintetize", "synthesize", "estruture",
-      "avalie", "avaliar", "avaliação", "evaluate",
-      "explique", "explain", "interprete", "interpret",
-      "leia", "read", "revise", "review"
+      "analise",
+      "análise",
+      "analyze",
+      "analysis",
+      "resuma",
+      "resumo",
+      "summarize",
+      "summary",
+      "compare",
+      "comparar",
+      "comparação",
+      "sintetize",
+      "synthesize",
+      "estruture",
+      "avalie",
+      "avaliar",
+      "avaliação",
+      "evaluate",
+      "explique",
+      "explain",
+      "interprete",
+      "interpret",
+      "leia",
+      "read",
+      "revise",
+      "review"
     ],
     "action": [
-      "reescreva", "rewrite", "formate", "format",
-      "converta", "convert", "transforme", "transform",
-      "corrija", "fix", "ajuste", "adjust",
-      "modifique", "modify", "adapte", "adapt",
-      "simplifique", "simplify", "traduza", "translate",
-      "gere", "generate", "crie", "create"
+      "reescreva",
+      "rewrite",
+      "formate",
+      "format",
+      "converta",
+      "convert",
+      "transforme",
+      "transform",
+      "corrija",
+      "fix",
+      "ajuste",
+      "adjust",
+      "modifique",
+      "modify",
+      "adapte",
+      "adapt",
+      "simplifique",
+      "simplify",
+      "traduza",
+      "translate",
+      "gere",
+      "generate",
+      "crie",
+      "create"
     ],
     "batch": [
-      "extraia", "extract", "classifique", "classify",
-      "parse", "parsing", "cada", "each",
-      "todos os", "all the", "every",
-      "em lote", "batch", "bulk",
-      "repetitivo", "repetitive", "lista de", "list of",
-      "processar", "process", "iterar", "iterate"
+      "extraia",
+      "extract",
+      "classifique",
+      "classify",
+      "parse",
+      "parsing",
+      "cada",
+      "each",
+      "todos os",
+      "all the",
+      "every",
+      "em lote",
+      "batch",
+      "bulk",
+      "repetitivo",
+      "repetitive",
+      "lista de",
+      "list of",
+      "processar",
+      "process",
+      "iterar",
+      "iterate"
     ]
   }
 }
