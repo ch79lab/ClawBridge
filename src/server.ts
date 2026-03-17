@@ -211,7 +211,16 @@ async function handleRequest(
     // Log the routing decision
     const userText = (body.messages || [])
       .filter(m => m.role === 'user')
-      .map(m => typeof m.content === 'string' ? m.content : '')
+      .map(m => {
+        if (typeof m.content === 'string') return m.content;
+        if (Array.isArray(m.content)) {
+          return m.content
+            .filter((b: Record<string, unknown>) => b.type === 'text')
+            .map((b: Record<string, unknown>) => b.text as string)
+            .join(' ');
+        }
+        return '';
+      })
       .join(' ');
 
     log.info({
