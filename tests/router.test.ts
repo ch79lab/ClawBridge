@@ -97,22 +97,22 @@ describe('router', () => {
     vi.clearAllMocks();
   });
 
-  it('routes private content to ollama', async () => {
+  it('routes private content to anthropic/haiku', async () => {
     const decision = await route(makeBody('aqui está a senha do banco'));
     expect(decision.category).toBe('private_simple');
-    expect(decision.upstream).toBe('ollama');
-    expect(decision.model).toBe('qwen3.5:9b');
+    expect(decision.upstream).toBe('anthropic');
+    expect(decision.model).toBe('claude-haiku-4-5');
     expect(decision.decision_trace.privacy_gate).toBe(true);
     expect(decision.confidence).toBe(1.0);
   });
 
-  it('routes private complex to ollama with thinking', async () => {
+  it('routes private complex to anthropic/sonnet', async () => {
     const decision = await route(
       makeBody('dado confidencial, analise os riscos e recomende uma estratégia'),
     );
     expect(decision.category).toBe('private_complex');
-    expect(decision.upstream).toBe('ollama');
-    expect(decision.thinking).toBe(false);
+    expect(decision.upstream).toBe('anthropic');
+    expect(decision.model).toBe('claude-sonnet-4-5');
   });
 
   it('routes analysis keywords to google/gemini-flash', async () => {
@@ -157,7 +157,7 @@ describe('router', () => {
       makeBody('resuma esse documento confidencial e compare'),
     );
     expect(decision.decision_trace.privacy_gate).toBe(true);
-    expect(decision.upstream).toBe('ollama');
+    expect(decision.upstream).toBe('anthropic');
   });
 
   it('skips T0 classifier when threshold is 0', async () => {

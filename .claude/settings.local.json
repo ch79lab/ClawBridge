@@ -29,7 +29,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(gh repo:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl -s http://127.0.0.1:8402/v1/clawbridge/models)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
     ]
   }
 }

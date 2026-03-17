@@ -37,7 +37,7 @@
       "thinking": false
     },
     "private_complex": {
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-4-5",
       "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
@@ -53,6 +53,11 @@
       "model": "claude-haiku-4-5",
       "upstream": "anthropic",
       "timeoutMs": 30000
+    },
+    {
+      "model": "claude-sonnet-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 60000
     }
   ],
   "classifier": {

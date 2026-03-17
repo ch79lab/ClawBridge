@@ -48,7 +48,7 @@ function makeDecision(overrides?: Partial<RoutingDecision>): RoutingDecision {
     confidence: 0.9,
     fallback_chain: [
       { model: 'claude-haiku-4-5', upstream: 'anthropic', timeoutMs: 30000 },
-      { model: 'qwen3.5:9b', upstream: 'ollama', timeoutMs: 60000 },
+      { model: 'claude-sonnet-4-5', upstream: 'anthropic', timeoutMs: 60000 },
     ],
     decision_trace: {
       privacy_gate: false,
@@ -120,26 +120,10 @@ describe('fallback', () => {
   it('returns error when all upstreams fail', async () => {
     mockProxyToGoogle.mockResolvedValue({ ok: false, status: 500, error: 'google down' });
     mockProxyToAnthropic.mockResolvedValue({ ok: false, status: 500, error: 'anthropic down' });
-    mockProxyToOllama.mockResolvedValue({ ok: false, error: 'ollama down' });
 
     const result = await executeWithFallback(fakeReq, fakeRes, fakeBody, makeDecision());
     expect(result.result.ok).toBe(false);
     expect(result.fallbackUsed).toBe(true);
     expect(result.attempts.length).toBeGreaterThan(2);
-  });
-
-  it('does NOT retry local (ollama) failures', async () => {
-    const localDecision = makeDecision({
-      model: 'qwen3.5:9b',
-      upstream: 'ollama',
-      fallback_chain: [],
-    });
-
-    mockProxyToOllama.mockResolvedValue({ ok: false, error: 'ollama down' });
-
-    const result = await executeWithFallback(fakeReq, fakeRes, fakeBody, localDecision);
-    expect(result.result.ok).toBe(false);
-    // Ollama should only be called once (no retry for local)
-    expect(mockProxyToOllama).toHaveBeenCalledTimes(1);
   });
 });

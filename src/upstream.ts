@@ -19,24 +19,14 @@ function toOllamaBody(
   body: AnthropicRequestBody,
   model: string,
   thinking: boolean,
-  maxSystemChars?: number,
 ): Record<string, unknown> {
   const messages: OllamaChatMessage[] = [];
 
-  // System message (optionally truncated for faster local inference)
+  // System message
   if (body.system) {
-    let systemText = typeof body.system === 'string'
+    const systemText = typeof body.system === 'string'
       ? body.system
       : JSON.stringify(body.system);
-
-    if (maxSystemChars && systemText.length > maxSystemChars) {
-      log.info({
-        msg: 'ollama_system_truncated',
-        original_length: systemText.length,
-        truncated_to: maxSystemChars,
-      });
-      systemText = systemText.slice(0, maxSystemChars);
-    }
 
     messages.push({ role: 'system', content: systemText });
   }
@@ -156,10 +146,9 @@ export async function proxyToOllama(
   model: string,
   thinking: boolean,
   timeoutMs: number,
-  maxSystemChars?: number,
 ): Promise<UpstreamResult> {
   const ollamaUrl = getOllamaUrl();
-  const payload = JSON.stringify(toOllamaBody(body, model, thinking, maxSystemChars));
+  const payload = JSON.stringify(toOllamaBody(body, model, thinking));
 
   try {
     const controller = new AbortController();
