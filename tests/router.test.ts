@@ -24,6 +24,15 @@ vi.mock('../src/config.js', async () => {
 
   return {
     routingConfig: config,
+    budgetConfig: {
+      monthly_budget_usd: 999,
+      warn_threshold_pct: 80,
+      downgrade_threshold_pct: 90,
+      hard_stop_pct: 100,
+      spike_daily_multiplier: 3.0,
+      spike_weekly_multiplier: 1.5,
+      downgrade_map: {},
+    },
     getOllamaUrl: () => 'http://localhost:11434',
     getAnthropicApiKey: () => 'test-key',
     getAnthropicBaseUrl: () => 'https://api.anthropic.com',
@@ -34,6 +43,20 @@ vi.mock('../src/config.js', async () => {
     shouldStorePreview: () => false,
   };
 });
+
+// Mock usage module (needed by budget.ts)
+vi.mock('../src/usage.js', () => ({
+  getUsageSummary: vi.fn().mockResolvedValue({
+    total_requests: 0,
+    total_input_tokens: 0,
+    total_output_tokens: 0,
+    total_cost: 0,
+    by_model: {},
+    by_category: {},
+    by_date: {},
+  }),
+  getUsageRaw: vi.fn().mockResolvedValue([]),
+}));
 
 // Suppress log output during tests
 vi.mock('../src/logger.js', () => ({

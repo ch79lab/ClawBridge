@@ -57,6 +57,9 @@ export interface DecisionTrace {
   t0_latency_ms?: number;
   escalated?: boolean;
   original_category?: Category;
+  budget_downgrade?: boolean;
+  budget_original_model?: string;
+  budget_level?: string;
 }
 
 // ── Config (routing.json shape) ─────────────────────────────
@@ -144,11 +147,51 @@ export interface UsageRecord {
   cost_output: number;
   cost_total: number;
   piped: boolean;
+  budget_downgraded?: boolean;
 }
 
 export interface PricingConfig {
   models: Record<string, { input_per_1m: number; output_per_1m: number }>;
   default: { input_per_1m: number; output_per_1m: number };
+}
+
+// ── Budget ──────────────────────────────────────────────────
+
+export interface BudgetConfig {
+  monthly_budget_usd: number;
+  warn_threshold_pct: number;
+  downgrade_threshold_pct: number;
+  hard_stop_pct: number;
+  spike_daily_multiplier: number;
+  spike_weekly_multiplier: number;
+  downgrade_map: Record<string, string>;
+}
+
+export interface BudgetStatus {
+  monthly_budget_usd: number;
+  daily_limit_usd: number;
+  weekly_limit_usd: number;
+  daily_spend_usd: number;
+  weekly_spend_usd: number;
+  monthly_spend_usd: number;
+  daily_pct: number;
+  weekly_pct: number;
+  monthly_pct: number;
+  pacing_expected_usd: number;
+  pacing_actual_usd: number;
+  pacing_pct: number;
+  level: 'normal' | 'warn' | 'downgrade' | 'hard_stop';
+  alerts: string[];
+  spike_daily: boolean;
+  spike_weekly: boolean;
+}
+
+export interface RegretStats {
+  total_requests: number;
+  budget_downgrades: number;
+  downgrade_pct: number;
+  downgrade_fallback_count: number;
+  downgrade_fallback_pct: number;
 }
 
 // ── Log entry ───────────────────────────────────────────────

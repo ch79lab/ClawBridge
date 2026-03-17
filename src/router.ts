@@ -5,6 +5,7 @@
 import { routingConfig } from './config.js';
 import { classifyByRules } from './classifier_rules.js';
 import { classifyByT0 } from './classifier_t0.js';
+import { getBudgetStatus, applyBudgetDowngrade } from './budget.js';
 import { log } from './logger.js';
 import type {
   AnthropicRequestBody,
@@ -120,19 +121,48 @@ export async function route(
   }
 
   // Step 4: Lookup route config
-  const routeConfig = config.routes[result.category];
+  let routeModel = config.routes[result.category].model;
+  let routeUpstream = config.routes[result.category].upstream;
+  const routeTimeoutMs = config.routes[result.category].timeoutMs;
+  const routeThinking = config.routes[result.category].thinking;
+
+  // Step 4b: Budget-aware downgrade
+  const budgetStatus = await getBudgetStatus();
+  trace.budget_level = budgetStatus.level;
+
+  if (budgetStatus.level !== 'normal' && !trace.privacy_gate) {
+    // At warn level, only downgrade if confidence is moderate
+    const shouldDowngrade = !(budgetStatus.level === 'warn' && result.confidence >= 0.7);
+
+    if (shouldDowngrade) {
+      const dg = applyBudgetDowngrade(routeModel, routeUpstream, result.category, budgetStatus.level);
+      if (dg.downgraded) {
+        trace.budget_downgrade = true;
+        trace.budget_original_model = routeModel;
+        routeModel = dg.model;
+        routeUpstream = dg.upstream;
+        log.warn({
+          msg: 'budget_downgrade',
+          from: trace.budget_original_model,
+          to: routeModel,
+          level: budgetStatus.level,
+          confidence: result.confidence,
+        });
+      }
+    }
+  }
 
   // Step 5: Build fallback chain (excluding the primary model)
   const fallback_chain = config.fallback_chain.filter(
-    step => step.model !== routeConfig.model || step.upstream !== routeConfig.upstream,
+    step => step.model !== routeModel || step.upstream !== routeUpstream,
   );
 
   const decision: RoutingDecision = {
     category: result.category,
-    model: routeConfig.model,
-    upstream: routeConfig.upstream,
-    timeoutMs: routeConfig.timeoutMs,
-    thinking: routeConfig.thinking,
+    model: routeModel,
+    upstream: routeUpstream,
+    timeoutMs: routeTimeoutMs,
+    thinking: routeThinking,
     confidence: result.confidence,
     fallback_chain,
     decision_trace: trace,

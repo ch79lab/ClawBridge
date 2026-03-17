@@ -11,6 +11,7 @@ import { executeWithFallback } from './fallback.js';
 import { estimateTokens } from './token_estimator.js';
 import type { AnthropicRequestBody, Upstream } from './types.js';
 import { recordUsage, extractTokensFromBody, calculateCost, getUsageSummary, getUsageRaw } from './usage.js';
+import { getBudgetStatus, getRegretStats } from './budget.js';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -154,6 +155,25 @@ async function handleRequest(
     return;
   }
 
+  // Budget endpoints
+  if (clientReq.url?.startsWith('/v1/clawbridge/budget/regret') && clientReq.method === 'GET') {
+    const params = new URL(clientReq.url, 'http://localhost').searchParams;
+    const stats = await getRegretStats(
+      params.get('from') || undefined,
+      params.get('to') || undefined,
+    );
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify(stats, null, 2));
+    return;
+  }
+
+  if (clientReq.url === '/v1/clawbridge/budget' && clientReq.method === 'GET') {
+    const status = await getBudgetStatus();
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify(status, null, 2));
+    return;
+  }
+
   // Usage tracking endpoints
   if (clientReq.url?.startsWith('/v1/clawbridge/usage/raw') && clientReq.method === 'GET') {
     const params = new URL(clientReq.url, 'http://localhost').searchParams;
@@ -269,6 +289,7 @@ async function handleRequest(
         token_source: 'estimate',
         ...pipedCost,
         piped: true,
+        budget_downgraded: decision.decision_trace.budget_downgrade || false,
       });
       return;
     }
@@ -315,6 +336,7 @@ async function handleRequest(
       token_source: tokenSource,
       ...cost,
       piped: false,
+      budget_downgraded: decision.decision_trace.budget_downgrade || false,
     });
 
     // Send response

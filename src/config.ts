@@ -5,7 +5,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { RoutingConfig, PricingConfig } from './types.js';
+import type { RoutingConfig, PricingConfig, BudgetConfig } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -75,6 +75,26 @@ function loadPricingConfig(): PricingConfig {
 }
 
 export const pricingConfig: PricingConfig = loadPricingConfig();
+
+// ── Load budget.json ────────────────────────────────────────
+
+function loadBudgetConfig(): BudgetConfig {
+  const configPath = join(ROOT, 'config', 'budget.json');
+  if (!existsSync(configPath)) {
+    return {
+      monthly_budget_usd: 999,
+      warn_threshold_pct: 80,
+      downgrade_threshold_pct: 90,
+      hard_stop_pct: 100,
+      spike_daily_multiplier: 3.0,
+      spike_weekly_multiplier: 1.5,
+      downgrade_map: {},
+    };
+  }
+  return JSON.parse(readFileSync(configPath, 'utf8')) as BudgetConfig;
+}
+
+export const budgetConfig: BudgetConfig = loadBudgetConfig();
 
 // ── Environment accessors ───────────────────────────────────
 
