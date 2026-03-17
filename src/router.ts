@@ -7,6 +7,7 @@ import { classifyByRules } from './classifier_rules.js';
 import { classifyByT0 } from './classifier_t0.js';
 import { getBudgetStatus, applyBudgetDowngrade } from './budget.js';
 import { applyCapabilityUpgrade } from './capabilities.js';
+import { reorderFallbackChain, getModelHealthScore } from './health.js';
 import { log } from './logger.js';
 import type {
   AnthropicRequestBody,
@@ -166,9 +167,16 @@ export async function route(
   }
 
   // Step 5: Build fallback chain (excluding the primary model)
-  const fallback_chain = config.fallback_chain.filter(
+  const staticChain = config.fallback_chain.filter(
     step => step.model !== routeModel || step.upstream !== routeUpstream,
   );
+
+  // Step 5b: Reorder fallback chain by health score (SLO-aware)
+  const { reordered: fallback_chain, wasReordered } = reorderFallbackChain(staticChain);
+  if (wasReordered) {
+    trace.fallback_reordered = true;
+  }
+  trace.primary_health_score = getModelHealthScore(routeModel, routeUpstream);
 
   const decision: RoutingDecision = {
     category: result.category,

@@ -64,6 +64,8 @@ export interface DecisionTrace {
   capability_original_model?: string;
   capability_required?: string[];
   capability_missing?: string[];
+  fallback_reordered?: boolean;
+  primary_health_score?: number;
 }
 
 // ── Config (routing.json shape) ─────────────────────────────
@@ -196,6 +198,33 @@ export interface RegretStats {
   downgrade_pct: number;
   downgrade_fallback_count: number;
   downgrade_fallback_pct: number;
+}
+
+// ── Health / SLO ────────────────────────────────────────
+
+export interface ModelHealth {
+  model: string;
+  upstream: Upstream;
+  // Sliding window stats
+  window_size: number;
+  success_count: number;
+  failure_count: number;
+  success_rate: number;       // 0-1
+  // Latency percentiles (ms)
+  latency_p50: number;
+  latency_p95: number;
+  latency_avg: number;
+  // Composite score (0-1, higher = healthier)
+  health_score: number;
+  // Last seen
+  last_success_ts?: string;
+  last_failure_ts?: string;
+  last_error?: string;
+}
+
+export interface HealthStatus {
+  models: ModelHealth[];
+  fallback_order: Array<{ model: string; upstream: Upstream; health_score: number }>;
 }
 
 // ── Capabilities ────────────────────────────────────────

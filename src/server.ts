@@ -13,6 +13,7 @@ import type { AnthropicRequestBody, Upstream, RouteExplanation } from './types.j
 import { recordUsage, extractTokensFromBody, calculateCost, getUsageSummary, getUsageRaw } from './usage.js';
 import { getBudgetStatus, getRegretStats } from './budget.js';
 import { detectRequiredCapabilities, getModelCapabilities } from './capabilities.js';
+import { recordOutcome, getHealthStatus } from './health.js';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -198,6 +199,14 @@ async function handleRequest(
     return;
   }
 
+  // Health endpoint — SLO scores and dynamic fallback order
+  if (clientReq.url === '/v1/clawbridge/health' && clientReq.method === 'GET') {
+    const status = getHealthStatus(routingConfig.fallback_chain);
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify(status, null, 2));
+    return;
+  }
+
   // Route explain endpoint — dry-run routing for a request body
   if (clientReq.url === '/v1/clawbridge/route/explain' && clientReq.method === 'POST') {
     let body: AnthropicRequestBody;
@@ -368,6 +377,9 @@ async function handleRequest(
         latency_ms: pipedLatency,
         piped: true,
       });
+      // Record health outcome (piped = assume success)
+      recordOutcome(decision.model, decision.upstream, true, pipedLatency);
+
       const estimatedIn = estimateTokens(userText);
       const pipedCost = calculateCost(decision.model, estimatedIn, 0);
       recordUsage({
@@ -410,6 +422,15 @@ async function handleRequest(
       token_estimate_in: estimateTokens(userText),
       decision_trace: decision.decision_trace,
     });
+
+    // Record health outcome for the final model used
+    recordOutcome(
+      fallbackResult.finalModel,
+      fallbackResult.finalUpstream,
+      fallbackResult.result.ok,
+      latencyMs,
+      fallbackResult.result.ok ? undefined : fallbackResult.result.error,
+    );
 
     // Record usage with actual tokens from response
     const tokens = fallbackResult.result.ok
