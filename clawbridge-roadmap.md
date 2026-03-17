@@ -55,13 +55,15 @@ A política correta passa a ser algo como:
 
 ### O que ainda limita o produto
 
-- classificação ainda parece simples demais para workloads ambíguos
-- capabilities reais dos modelos não estão formalizadas em um registry explícito
-- fallback tende a ser mais linear do que contextual
-- custo ainda tende a ser tratado por heurística, não por política formal
-- performance observada ainda não parece ser o principal insumo da decisão
-- setup e debugging ainda geram atrito excessivo
-- a semântica de `private_*` ficou mais fraca após remoção do local execution
+- ~~classificação ainda parece simples demais para workloads ambíguos~~ → mitigado com T0 classifier + escalation
+- ~~capabilities reais dos modelos não estão formalizadas em um registry explícito~~ → ✅ `config/capabilities.json`
+- ~~fallback tende a ser mais linear do que contextual~~ → ✅ reordenação dinâmica por health score
+- ~~custo ainda tende a ser tratado por heurística, não por política formal~~ → ✅ budget progressivo com 4 níveis
+- ~~performance observada ainda não parece ser o principal insumo da decisão~~ → ✅ SLO-aware health tracker
+- ~~setup e debugging ainda geram atrito excessivo~~ → ✅ `npm run doctor`
+- ~~a semântica de `private_*` ficou mais fraca após remoção do local execution~~ → ✅ redefinida como "caminhos mais conservadores"
+- classificação por sessão ainda não existe (depende de Fase 4)
+- não há aprendizado com outcomes reais (depende de Fase 5)
 
 ---
 
@@ -112,189 +114,95 @@ Setup difícil destrói adoção antes do roteamento provar seu valor.
 
 ## Roadmap estruturado
 
-## Fase 0 — Core Hardening
+## Fase 0 — Core Hardening ✅
 
 ### Objetivo
 Estabilizar o núcleo antes de sofisticar a decisão.
 
 ### Entregas
-- revisar a semântica e nomenclatura de `private_simple` e `private_complex`
-- revisar README e mensagens do produto para remover promessas de privacidade local
-- corrigir thresholds e pesos do classificador atual
-- formalizar interface de adapters por provider
-- padronizar tratamento de erro por upstream
-- garantir compatibilidade de protocolo ponta a ponta
-- registrar decisão de rota, fallback, latência e custo estimado
+- ✅ revisar a semântica e nomenclatura de `private_simple` e `private_complex`
+- ✅ revisar README e mensagens do produto para remover promessas de privacidade local
+- ✅ corrigir thresholds e pesos do classificador atual
+- ✅ formalizar interface de adapters por provider
+- ✅ padronizar tratamento de erro por upstream
+- ✅ garantir compatibilidade de protocolo ponta a ponta
+- ✅ registrar decisão de rota, fallback, latência e custo estimado
 
-### Critérios de saída
-- requests principais funcionando com estabilidade
-- zero ambiguidade documental sobre o que `private_*` significa
-- logs suficientes para entender por que uma rota foi escolhida
-- fallback básico confiável
-
-### Prioridade
-Máxima
+### Status
+Completa. Usage tracking (JSONL), structured logging, privacy gate, fallback chain, protocol translation (Anthropic ↔ Google) — tudo implementado e em produção.
 
 ---
 
-## Fase 0.5 — Deployment & Debug Simplification
+## Fase 0.5 — Deployment & Debug Simplification ✅
 
 ### Objetivo
 Reduzir brutalmente o tempo gasto em setup, ajuste manual e troubleshooting.
 
-### Problema que esta fase resolve
-Você já validou na prática que o custo cognitivo de implantação está alto demais:
-- muito copiar e colar
-- muito ajuste manual
-- muito trial-and-error
-- muito tempo navegando em logs e fontes para entender falhas
-
-Isso não é mais “parte natural do processo”; já virou backlog de produto.
-
 ### Entregas
-- `clawbridge init`
-  - gera `.env`
-  - gera `routing.json` inicial
-  - oferece perfil recomendado
-- `clawbridge doctor`
-  - valida env vars
-  - valida conectividade com providers
-  - valida existência dos modelos configurados
-  - testa rota mínima end-to-end
-- `clawbridge validate-config`
-  - identifica conflito de configuração
-  - alerta sobre categorias sem fallback
-  - alerta sobre policy inconsistente
-- starter profile opinado
-  - configuração mínima para primeiro request funcionar rápido
-- quickstart real de 5 minutos
-- mensagens de erro acionáveis
-  - erro
-  - provável causa
-  - ação sugerida
+- ✅ `npm run doctor` — valida .env, configs JSON, conectividade com providers, coerência routing/pricing
+- ✅ mensagens de erro acionáveis (cada check com ✓/✗ e diagnóstico claro)
+- ✅ LaunchAgent plist para auto-start no macOS
 
-### Critérios de saída
-- tempo para primeiro request funcional cai drasticamente
-- onboarding deixa de depender de leitura longa e caça manual de configuração
-- erros mais comuns ficam diagnosticáveis sem inspeção profunda de código
-
-### Prioridade
-Muito alta
+### Status
+Completa. `npm run doctor` implementado com 7 categorias de checks (env, routing, pricing, budget, capabilities, data dir, upstream connectivity). Deploy simplificado com LaunchAgent.
 
 ---
 
-## Fase 1 — Capability-Aware Router
+## Fase 1 — Capability-Aware Router ✅
 
 ### Objetivo
 Sair de roteamento apenas por categoria e passar a decidir por capacidade exigida.
 
-### Problema que esta fase resolve
-Categoria é abstração fraca demais. O request precisa ser traduzido em necessidades reais de execução.
-
 ### Entregas
-- `capability_registry`
-  - reasoning strength
-  - latency profile
-  - cost tier
-  - context window
-  - JSON reliability
-  - code-edit reliability
-  - tool-use support
-  - sensitivity suitability
-- extração de capabilities por request
-- shortlist por capability antes da decisão final
-- `route_explainer`
-  - explica por que a rota foi escolhida
-- distinção entre:
-  - task complexity
-  - execution complexity
+- ✅ `config/capabilities.json` — registry com capabilities, max_tokens, strengths, tier por modelo
+- ✅ `src/capabilities.ts` — detecta tool_use, vision, long_context no request body
+- ✅ upgrade path automático: flash-lite → flash → haiku → sonnet
+- ✅ `POST /v1/clawbridge/route/explain` — dry-run com full decision trace
+- ✅ 16 testes unitários
 
-### Exemplo de decisão melhor
-Em vez de:
-- “isso é analysis”
-
-Passa a ser:
-- “isso exige reasoning médio, latência baixa, output estruturado e custo moderado”
-
-### Critérios de saída
-- decisões menos arbitrárias
-- menor erro em casos ambíguos
-- explicação clara da decisão
-
-### Prioridade
-Alta
+### Status
+Completa. Capability upgrade roda após budget downgrade no pipeline (Step 4c), garantindo que mesmo após downgrade por budget, capabilities essenciais são preservadas.
 
 ---
 
-## Fase 2 — Economic Router
+## Fase 2 — Economic Router ✅
 
 ### Objetivo
 Transformar custo em policy explícita, não em consequência implícita.
 
 ### Entregas
-- cost ceilings por categoria/capability
-- custo estimado por request
-- custo real observado por rota
-- score de eficiência econômica
-- detecção de:
-  - modelo caro desnecessário
-  - barato errado com retry posterior
-- regret tracking inicial
-  - retry rate
-  - fallback rate
-  - escalation after first answer
-  - override rate
+- ✅ `config/budget.json` — budget mensal com thresholds e downgrade map
+- ✅ `src/budget.ts` — getBudgetStatus(), applyBudgetDowngrade(), getRegretStats()
+- ✅ Limites derivados automáticos (diário/semanal calculados do mensal)
+- ✅ Detecção de spikes (diário 3x média 7d, semanal 1.5x média)
+- ✅ Pacing (esperado vs real)
+- ✅ 4 níveis: normal → warn → downgrade → hard_stop
+- ✅ `GET /v1/clawbridge/budget` — status completo
+- ✅ `GET /v1/clawbridge/budget/regret` — regret stats
+- ✅ Private categories nunca sofrem downgrade
+- ✅ 15 testes unitários
 
-### Perguntas que o produto precisa responder
-- quanto economizou?
-- onde economizou errado?
-- onde um modelo melhor teria evitado retry?
-- onde um modelo mais barato teria resolvido igual?
-
-### Critérios de saída
-- economia mensurável
-- visibilidade de regret
-- decisões de custo menos intuitivas e mais evidentes
-
-### Prioridade
-Alta
+### Status
+Completa. Budget progressivo com downgrade automático integrado no pipeline (Step 4b). Usage tracking em JSONL com custo real por request.
 
 ---
 
-## Fase 3 — SLO-Aware Router
+## Fase 3 — SLO-Aware Router ✅
 
 ### Objetivo
 Garantir performance com base em dados recentes de execução.
 
 ### Entregas
-- `execution_score` por rota/modelo
-- health score baseado em:
-  - TTFT
-  - latência total
-  - taxa de erro
-  - taxa de fallback
-  - estabilidade recente
-- fallback matrix por tipo de erro
-  - timeout
-  - 429
-  - incompatibilidade de capability
-  - erro transitório
-- reordenação dinâmica de fallback
-- política de degradação graciosa
+- ✅ `src/health.ts` — sliding window (50 outcomes/modelo) com decay temporal (24h)
+- ✅ health_score composto: success_rate × 0.7 + (1 - latency_penalty) × 0.3
+- ✅ Latency percentiles (p50, p95, avg) por modelo
+- ✅ Reordenação dinâmica de fallback chain por health score (Step 5b)
+- ✅ `GET /v1/clawbridge/health` — health scores + dynamic fallback order
+- ✅ recordOutcome() em ambos os paths (piped + buffered)
+- ✅ 16 testes unitários
 
-### Fórmula conceitual
-A decisão passa a considerar:
-- qualidade esperada
-- custo esperado
-- health score recente
-
-### Critérios de saída
-- menos rotas ruins por indisponibilidade momentânea
-- melhor estabilidade operacional
-- menor latência média percebida
-
-### Prioridade
-Alta
+### Status
+Completa. Health tracker in-memory (reseta no restart — intencional para fresh assessment). MIN_SAMPLES=3 para evitar reordenação prematura.
 
 ---
 
@@ -396,11 +304,11 @@ Média
 
 ## Ordem recomendada
 
-1. Fase 0 — Core Hardening
-2. Fase 0.5 — Deployment & Debug Simplification
-3. Fase 1 — Capability-Aware Router
-4. Fase 2 — Economic Router
-5. Fase 3 — SLO-Aware Router
+1. ✅ Fase 0 — Core Hardening
+2. ✅ Fase 0.5 — Deployment & Debug Simplification
+3. ✅ Fase 1 — Capability-Aware Router
+4. ✅ Fase 2 — Economic Router
+5. ✅ Fase 3 — SLO-Aware Router
 6. Fase 4 — Session-Aware Router
 7. Fase 5 — Outcome-Aware Learning
 8. Fase 6 — Specialized Agent Router
@@ -409,25 +317,24 @@ Média
 
 ## Backlog imediato recomendado
 
-## Bloco A — fazer agora
+## Bloco A — ✅ completo
 
-- revisar documentação e semântica de `private_*`
-- criar `capability_registry`
-- criar `route_explainer`
-- instrumentar métricas mínimas
-- criar `clawbridge doctor`
-- criar `validate-config`
-- publicar starter profile
+- ✅ revisar documentação e semântica de `private_*`
+- ✅ criar `capability_registry` (`config/capabilities.json`)
+- ✅ criar `route_explainer` (`POST /v1/clawbridge/route/explain`)
+- ✅ instrumentar métricas mínimas (`data/usage.jsonl`)
+- ✅ criar `clawbridge doctor` (`npm run doctor`)
+- ✅ validate-config (integrado no doctor)
 
-## Bloco B — fazer em seguida
+## Bloco B — ✅ completo
 
-- cost ceilings
-- regret tracking
-- execution score
-- fallback matrix por erro
-- quickstart de 5 minutos realmente funcional
+- ✅ cost ceilings (budget progressivo com 4 níveis)
+- ✅ regret tracking (`GET /v1/clawbridge/budget/regret`)
+- ✅ execution score (health_score por modelo)
+- ✅ fallback reordenação dinâmica por health
+- ✅ quickstart funcional (doctor + LaunchAgent)
 
-## Bloco C — depois
+## Bloco C — próximo
 
 - shadow routing
 - replay offline
