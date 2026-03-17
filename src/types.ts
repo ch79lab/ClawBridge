@@ -126,6 +126,31 @@ export interface UpstreamResult {
   error?: string;
 }
 
+// ── Usage tracking ──────────────────────────────────────────
+
+export interface UsageRecord {
+  ts: string;
+  request_id: string;
+  category: Category;
+  upstream: Upstream;
+  model: string;
+  primary_model: string;
+  fallback_used: boolean;
+  latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  token_source: 'actual' | 'estimate';
+  cost_input: number;
+  cost_output: number;
+  cost_total: number;
+  piped: boolean;
+}
+
+export interface PricingConfig {
+  models: Record<string, { input_per_1m: number; output_per_1m: number }>;
+  default: { input_per_1m: number; output_per_1m: number };
+}
+
 // ── Log entry ───────────────────────────────────────────────
 
 export interface LogEntry {

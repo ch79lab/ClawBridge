@@ -5,7 +5,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { RoutingConfig } from './types.js';
+import type { RoutingConfig, PricingConfig } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -63,6 +63,18 @@ function loadRoutingConfig(): RoutingConfig {
 }
 
 export const routingConfig: RoutingConfig = loadRoutingConfig();
+
+// ── Load pricing.json ───────────────────────────────────────
+
+function loadPricingConfig(): PricingConfig {
+  const configPath = join(ROOT, 'config', 'pricing.json');
+  if (!existsSync(configPath)) {
+    return { models: {}, default: { input_per_1m: 0, output_per_1m: 0 } };
+  }
+  return JSON.parse(readFileSync(configPath, 'utf8')) as PricingConfig;
+}
+
+export const pricingConfig: PricingConfig = loadPricingConfig();
 
 // ── Environment accessors ───────────────────────────────────
 

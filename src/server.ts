@@ -9,7 +9,8 @@ import { log, withRequestContext } from './logger.js';
 import { route } from './router.js';
 import { executeWithFallback } from './fallback.js';
 import { estimateTokens } from './token_estimator.js';
-import type { AnthropicRequestBody } from './types.js';
+import type { AnthropicRequestBody, Upstream } from './types.js';
+import { recordUsage, extractTokensFromBody, calculateCost, getUsageSummary, getUsageRaw } from './usage.js';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -153,6 +154,32 @@ async function handleRequest(
     return;
   }
 
+  // Usage tracking endpoints
+  if (clientReq.url?.startsWith('/v1/clawbridge/usage/raw') && clientReq.method === 'GET') {
+    const params = new URL(clientReq.url, 'http://localhost').searchParams;
+    const records = await getUsageRaw({
+      limit: params.get('limit') ? parseInt(params.get('limit')!, 10) : 100,
+      model: params.get('model') || undefined,
+      category: params.get('category') || undefined,
+      from: params.get('from') || undefined,
+      to: params.get('to') || undefined,
+    });
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify({ count: records.length, records }, null, 2));
+    return;
+  }
+
+  if (clientReq.url?.startsWith('/v1/clawbridge/usage') && clientReq.method === 'GET') {
+    const params = new URL(clientReq.url, 'http://localhost').searchParams;
+    const summary = await getUsageSummary({
+      from: params.get('from') || undefined,
+      to: params.get('to') || undefined,
+    });
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify(summary, null, 2));
+    return;
+  }
+
   // Non-message requests → passthrough to Anthropic
   if (clientReq.method !== 'POST' || !clientReq.url?.startsWith('/v1/messages')) {
     const raw = await collectBody(clientReq);
@@ -207,13 +234,31 @@ async function handleRequest(
     if (decision.upstream === 'anthropic') {
       const pipeBody = { ...body, model: decision.model };
       passthrough(clientReq, clientRes, JSON.stringify(pipeBody));
+      const pipedLatency = Date.now() - startTime;
       log.info({
         msg: 'request_complete',
         request_id: requestId,
         category: decision.category,
         primary_model: decision.model,
         final_model: decision.model,
-        latency_ms: Date.now() - startTime,
+        latency_ms: pipedLatency,
+        piped: true,
+      });
+      const estimatedIn = estimateTokens(userText);
+      const pipedCost = calculateCost(decision.model, estimatedIn, 0);
+      recordUsage({
+        ts: new Date().toISOString(),
+        request_id: requestId,
+        category: decision.category,
+        upstream: decision.upstream,
+        model: decision.model,
+        primary_model: decision.model,
+        fallback_used: false,
+        latency_ms: pipedLatency,
+        input_tokens: estimatedIn,
+        output_tokens: 0,
+        token_source: 'estimate',
+        ...pipedCost,
         piped: true,
       });
       return;
@@ -239,6 +284,28 @@ async function handleRequest(
       latency_ms: latencyMs,
       token_estimate_in: estimateTokens(userText),
       decision_trace: decision.decision_trace,
+    });
+
+    // Record usage with actual tokens from response
+    const tokens = fallbackResult.result.ok
+      ? extractTokensFromBody(fallbackResult.result.body)
+      : { input_tokens: estimateTokens(userText), output_tokens: 0 };
+    const tokenSource = fallbackResult.result.ok ? 'actual' as const : 'estimate' as const;
+    const cost = calculateCost(fallbackResult.finalModel, tokens.input_tokens, tokens.output_tokens);
+    recordUsage({
+      ts: new Date().toISOString(),
+      request_id: requestId,
+      category: decision.category,
+      upstream: fallbackResult.finalUpstream as Upstream,
+      model: fallbackResult.finalModel,
+      primary_model: decision.model,
+      fallback_used: fallbackResult.fallbackUsed,
+      latency_ms: latencyMs,
+      input_tokens: tokens.input_tokens,
+      output_tokens: tokens.output_tokens,
+      token_source: tokenSource,
+      ...cost,
+      piped: false,
     });
 
     // Send response
