@@ -11,7 +11,8 @@
     "start": "node dist/server.js",
     "dev": "tsx src/server.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "doctor": "tsx src/doctor.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

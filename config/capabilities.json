@@ -1,0 +1,51 @@
+{
+  "models": {
+    "claude-sonnet-4-5": {
+      "capabilities": ["tool_use", "vision", "long_context", "code", "multilingual", "thinking"],
+      "max_context_tokens": 200000,
+      "max_output_tokens": 8192,
+      "strengths": ["complex_reasoning", "code_generation", "nuanced_analysis"],
+      "tier": 3
+    },
+    "claude-haiku-4-5": {
+      "capabilities": ["tool_use", "vision", "long_context", "code", "multilingual"],
+      "max_context_tokens": 200000,
+      "max_output_tokens": 8192,
+      "strengths": ["fast_response", "simple_tasks", "classification"],
+      "tier": 2
+    },
+    "gemini-2.5-flash": {
+      "capabilities": ["tool_use", "vision", "long_context", "code", "multilingual"],
+      "max_context_tokens": 1048576,
+      "max_output_tokens": 65536,
+      "strengths": ["long_documents", "analysis", "summarization"],
+      "tier": 2
+    },
+    "gemini-2.5-flash-lite": {
+      "capabilities": ["long_context", "multilingual"],
+      "max_context_tokens": 1048576,
+      "max_output_tokens": 65536,
+      "strengths": ["bulk_processing", "extraction", "classification"],
+      "tier": 1
+    }
+  },
+  "request_detection": {
+    "tool_use": {
+      "check": "body.tools && body.tools.length > 0",
+      "description": "Request includes tool definitions"
+    },
+    "vision": {
+      "check": "messages contain image content blocks",
+      "description": "Request includes image inputs"
+    },
+    "long_context": {
+      "token_threshold": 50000,
+      "description": "Estimated input exceeds 50K tokens"
+    }
+  },
+  "upgrade_path": {
+    "gemini-2.5-flash-lite": "gemini-2.5-flash",
+    "gemini-2.5-flash": "claude-haiku-4-5",
+    "claude-haiku-4-5": "claude-sonnet-4-5"
+  }
+}

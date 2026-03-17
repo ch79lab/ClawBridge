@@ -6,12 +6,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { randomUUID } from 'node:crypto';
 import { getPort, isShadowMode, getAnthropicBaseUrl, getAnthropicApiKey, routingConfig } from './config.js';
 import { log, withRequestContext } from './logger.js';
-import { route } from './router.js';
+import { route, extractUserText } from './router.js';
 import { executeWithFallback } from './fallback.js';
 import { estimateTokens } from './token_estimator.js';
-import type { AnthropicRequestBody, Upstream } from './types.js';
+import type { AnthropicRequestBody, Upstream, RouteExplanation } from './types.js';
 import { recordUsage, extractTokensFromBody, calculateCost, getUsageSummary, getUsageRaw } from './usage.js';
 import { getBudgetStatus, getRegretStats } from './budget.js';
+import { detectRequiredCapabilities, getModelCapabilities } from './capabilities.js';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -117,6 +118,29 @@ function sendAsSSE(res: ServerResponse, jsonBody: string): void {
   res.end();
 }
 
+// ── Routing reason builder ──────────────────────────────────
+
+function buildRoutingReason(decision: { category: string; model: string; upstream: string; decision_trace: { privacy_gate: boolean; budget_downgrade?: boolean; budget_original_model?: string; capability_upgrade?: boolean; capability_original_model?: string } }): string {
+  const parts: string[] = [];
+
+  if (decision.decision_trace.privacy_gate) {
+    parts.push(`Privacy gate triggered → category ${decision.category}`);
+  } else {
+    parts.push(`Classified as "${decision.category}"`);
+  }
+
+  parts.push(`→ ${decision.upstream}/${decision.model}`);
+
+  if (decision.decision_trace.capability_upgrade) {
+    parts.push(`(upgraded from ${decision.decision_trace.capability_original_model} for capability requirements)`);
+  }
+  if (decision.decision_trace.budget_downgrade) {
+    parts.push(`(downgraded from ${decision.decision_trace.budget_original_model} due to budget)`);
+  }
+
+  return parts.join(' ');
+}
+
 // ── Request handler ─────────────────────────────────────────
 
 async function handleRequest(
@@ -171,6 +195,77 @@ async function handleRequest(
     const status = await getBudgetStatus();
     clientRes.writeHead(200, { 'Content-Type': 'application/json' });
     clientRes.end(JSON.stringify(status, null, 2));
+    return;
+  }
+
+  // Route explain endpoint — dry-run routing for a request body
+  if (clientReq.url === '/v1/clawbridge/route/explain' && clientReq.method === 'POST') {
+    let body: AnthropicRequestBody;
+    try {
+      const raw = await collectBody(clientReq);
+      body = JSON.parse(raw) as AnthropicRequestBody;
+    } catch {
+      clientRes.writeHead(400, { 'Content-Type': 'application/json' });
+      clientRes.end(JSON.stringify({ error: 'invalid_json' }));
+      return;
+    }
+
+    const decision = await route(body);
+    const { lastText } = extractUserText(body);
+    const requiredCaps = detectRequiredCapabilities(body, lastText);
+    const modelCaps = getModelCapabilities(decision.model);
+
+    const hasImages = (body.messages || []).some(m => {
+      if (!Array.isArray(m.content)) return false;
+      return m.content.some(b => b.type === 'image' || b.type === 'image_url');
+    });
+
+    const lastMsg = (body.messages || []).filter(m => m.role === 'user').slice(-1)[0];
+    const preview = lastMsg
+      ? (typeof lastMsg.content === 'string'
+          ? lastMsg.content.slice(0, 100)
+          : Array.isArray(lastMsg.content)
+            ? lastMsg.content.filter(b => b.type === 'text').map(b => b.text || '').join(' ').slice(0, 100)
+            : '')
+      : '';
+
+    const explanation: RouteExplanation = {
+      input_summary: {
+        last_message_preview: preview + (preview.length >= 100 ? '...' : ''),
+        message_count: (body.messages || []).length,
+        has_tools: !!(body.tools && body.tools.length > 0),
+        has_images: hasImages,
+        estimated_tokens: estimateTokens(lastText),
+      },
+      classification: {
+        category: decision.category,
+        confidence: decision.confidence,
+        rules_hit: decision.decision_trace.rules_hit,
+        privacy_detected: decision.decision_trace.privacy_gate,
+      },
+      routing: {
+        model: decision.model,
+        upstream: decision.upstream,
+        reason: buildRoutingReason(decision),
+      },
+      capabilities: {
+        required: requiredCaps,
+        model_has: modelCaps?.capabilities || [],
+        upgrade_applied: decision.decision_trace.capability_upgrade || false,
+        upgrade_reason: decision.decision_trace.capability_missing
+          ? `Missing: ${decision.decision_trace.capability_missing.join(', ')}`
+          : undefined,
+      },
+      budget: {
+        level: decision.decision_trace.budget_level || 'normal',
+        downgrade_applied: decision.decision_trace.budget_downgrade || false,
+        original_model: decision.decision_trace.budget_original_model,
+      },
+      fallback_chain: decision.fallback_chain.map(s => ({ model: s.model, upstream: s.upstream })),
+    };
+
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify(explanation, null, 2));
     return;
   }
 

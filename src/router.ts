@@ -6,6 +6,7 @@ import { routingConfig } from './config.js';
 import { classifyByRules } from './classifier_rules.js';
 import { classifyByT0 } from './classifier_t0.js';
 import { getBudgetStatus, applyBudgetDowngrade } from './budget.js';
+import { applyCapabilityUpgrade } from './capabilities.js';
 import { log } from './logger.js';
 import type {
   AnthropicRequestBody,
@@ -150,6 +151,18 @@ export async function route(
         });
       }
     }
+  }
+
+  // Step 4c: Capability-aware upgrade
+  // If the selected model lacks required capabilities (tool_use, vision, etc.), upgrade
+  const capResult = applyCapabilityUpgrade(routeModel, routeUpstream, body, lastText);
+  if (capResult.upgraded) {
+    trace.capability_upgrade = true;
+    trace.capability_original_model = routeModel;
+    trace.capability_required = capResult.check.required;
+    trace.capability_missing = capResult.check.missing;
+    routeModel = capResult.model;
+    routeUpstream = capResult.upstream;
   }
 
   // Step 5: Build fallback chain (excluding the primary model)

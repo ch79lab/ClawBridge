@@ -60,6 +60,10 @@ export interface DecisionTrace {
   budget_downgrade?: boolean;
   budget_original_model?: string;
   budget_level?: string;
+  capability_upgrade?: boolean;
+  capability_original_model?: string;
+  capability_required?: string[];
+  capability_missing?: string[];
 }
 
 // ── Config (routing.json shape) ─────────────────────────────
@@ -192,6 +196,72 @@ export interface RegretStats {
   downgrade_pct: number;
   downgrade_fallback_count: number;
   downgrade_fallback_pct: number;
+}
+
+// ── Capabilities ────────────────────────────────────────
+
+export type Capability = 'tool_use' | 'vision' | 'long_context' | 'code' | 'multilingual' | 'thinking';
+
+export interface ModelCapabilities {
+  capabilities: Capability[];
+  max_context_tokens: number;
+  max_output_tokens: number;
+  strengths: string[];
+  tier: number; // 1=cheapest, 3=most capable
+}
+
+export interface CapabilitiesConfig {
+  models: Record<string, ModelCapabilities>;
+  request_detection: {
+    tool_use: { check: string; description: string };
+    vision: { check: string; description: string };
+    long_context: { token_threshold: number; description: string };
+  };
+  upgrade_path: Record<string, string>;
+}
+
+export interface CapabilityCheck {
+  required: Capability[];
+  missing: Capability[];
+  upgrade_needed: boolean;
+  upgraded_model?: string;
+  upgraded_upstream?: Upstream;
+  reason?: string;
+}
+
+// ── Route explanation ───────────────────────────────────
+
+export interface RouteExplanation {
+  input_summary: {
+    last_message_preview: string;
+    message_count: number;
+    has_tools: boolean;
+    has_images: boolean;
+    estimated_tokens: number;
+  };
+  classification: {
+    category: Category;
+    confidence: number;
+    rules_hit: string[];
+    privacy_detected: boolean;
+  };
+  routing: {
+    model: string;
+    upstream: Upstream;
+    reason: string;
+  };
+  capabilities: {
+    required: Capability[];
+    model_has: Capability[];
+    upgrade_applied: boolean;
+    upgrade_reason?: string;
+  };
+  budget: {
+    level: string;
+    downgrade_applied: boolean;
+    original_model?: string;
+  };
+  fallback_chain: Array<{ model: string; upstream: Upstream }>;
 }
 
 // ── Log entry ───────────────────────────────────────────────

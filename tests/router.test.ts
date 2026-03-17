@@ -41,6 +41,7 @@ vi.mock('../src/config.js', async () => {
     getLogLevel: () => 'info',
     isShadowMode: () => false,
     shouldStorePreview: () => false,
+    capabilitiesConfig: null,
   };
 });
 
