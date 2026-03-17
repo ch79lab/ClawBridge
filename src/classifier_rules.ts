@@ -92,24 +92,31 @@ function scoreCategories(
 
 // ── Main classifier ─────────────────────────────────────────
 
+/**
+ * Classify a message using keyword rules.
+ * @param recentText - Last 3 user messages (for privacy gate — broader context)
+ * @param lastText - Last user message only (for category scoring — current intent)
+ * @param config - Routing configuration
+ */
 export function classifyByRules(
-  message: string,
+  recentText: string,
+  lastText: string,
   config: RoutingConfig,
 ): ClassifierResult {
   const rules_hit: string[] = [];
 
-  // Step 1: Privacy gate (always first, confidence 1.0)
-  const privacy = checkPrivacyGate(message, config);
+  // Step 1: Privacy gate checks recent context (last 3 messages)
+  const privacy = checkPrivacyGate(recentText, config);
   if (privacy.isPrivate) {
-    const isComplex = isComplexPrivate(message, config);
+    const isComplex = isComplexPrivate(lastText, config);
     const category: Category = isComplex ? 'private_complex' : 'private_simple';
     rules_hit.push(`privacy_gate:${privacy.reason}`);
     if (isComplex) rules_hit.push('private_complexity:complex');
     return { category, confidence: 1.0, rules_hit };
   }
 
-  // Step 2: Category scoring
-  const scores = scoreCategories(message, config);
+  // Step 2: Category scoring (only the current message)
+  const scores = scoreCategories(lastText, config);
   const totalHits = scores.reduce((sum, s) => sum + s.hits, 0);
 
   // No hits at all — low confidence, default to action

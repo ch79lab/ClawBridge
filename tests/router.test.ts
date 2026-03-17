@@ -55,8 +55,9 @@ function makeBody(text: string): AnthropicRequestBody {
 
 describe('extractUserText', () => {
   it('extracts text from string content', () => {
-    const body = makeBody('hello world');
-    expect(extractUserText(body)).toBe('hello world');
+    const { recentText, lastText } = extractUserText(makeBody('hello world'));
+    expect(recentText).toBe('hello world');
+    expect(lastText).toBe('hello world');
   });
 
   it('extracts text from content blocks', () => {
@@ -72,10 +73,12 @@ describe('extractUserText', () => {
         },
       ],
     };
-    expect(extractUserText(body)).toBe('first part second part');
+    const { recentText, lastText } = extractUserText(body);
+    expect(recentText).toBe('first part second part');
+    expect(lastText).toBe('first part second part');
   });
 
-  it('takes only last 3 user messages', () => {
+  it('recentText takes last 3, lastText takes only last message', () => {
     const body: AnthropicRequestBody = {
       model: 'test',
       messages: [
@@ -88,7 +91,9 @@ describe('extractUserText', () => {
         { role: 'user', content: 'msg4' },
       ],
     };
-    expect(extractUserText(body)).toBe('msg2 msg3 msg4');
+    const { recentText, lastText } = extractUserText(body);
+    expect(recentText).toBe('msg2 msg3 msg4');
+    expect(lastText).toBe('msg4');
   });
 });
 
@@ -170,6 +175,38 @@ describe('router', () => {
     const decision = await route(makeBody('a senha é 12345'));
     expect(decision.decision_trace.classifier_used).toBe(false);
     expect(decision.decision_trace.privacy_gate).toBe(true);
+  });
+
+  it('classifies by last message, not conversation history', async () => {
+    // Previous message has batch keywords, current message has analysis keywords
+    const body: AnthropicRequestBody = {
+      model: 'claude-sonnet-4-5',
+      messages: [
+        { role: 'user', content: 'extraia todos os emails e classifique cada um em lote' },
+        { role: 'assistant', content: 'done' },
+        { role: 'user', content: 'resuma o documento, compare e avalie os resultados' },
+      ],
+      max_tokens: 1024,
+    };
+    const decision = await route(body);
+    expect(decision.category).toBe('analysis');
+    expect(decision.upstream).toBe('google');
+  });
+
+  it('privacy gate still checks conversation history', async () => {
+    // Previous message had "senha", current message is normal
+    const body: AnthropicRequestBody = {
+      model: 'claude-sonnet-4-5',
+      messages: [
+        { role: 'user', content: 'a senha é 12345' },
+        { role: 'assistant', content: 'ok' },
+        { role: 'user', content: 'resuma o documento' },
+      ],
+      max_tokens: 1024,
+    };
+    const decision = await route(body);
+    expect(decision.decision_trace.privacy_gate).toBe(true);
+    expect(decision.upstream).toBe('anthropic');
   });
 
   it('includes fallback chain in decision', async () => {

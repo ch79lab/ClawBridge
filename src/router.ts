@@ -16,22 +16,34 @@ import type {
 
 // ── Extract user text from Anthropic messages ───────────────
 
-export function extractUserText(body: AnthropicRequestBody): string {
-  if (!body.messages || !Array.isArray(body.messages)) return '';
-  return body.messages
-    .filter(m => m.role === 'user')
-    .slice(-3)
-    .map(m => {
-      if (typeof m.content === 'string') return m.content;
-      if (Array.isArray(m.content)) {
-        return m.content
-          .filter(b => b.type === 'text')
-          .map(b => b.text || '')
-          .join(' ');
-      }
-      return '';
-    })
-    .join(' ');
+function extractMessageText(msg: { content: string | Array<{ type: string; text?: string }> }): string {
+  if (typeof msg.content === 'string') return msg.content;
+  if (Array.isArray(msg.content)) {
+    return msg.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text || '')
+      .join(' ');
+  }
+  return '';
+}
+
+/**
+ * Extract user text for classification.
+ * Returns two strings:
+ * - recentText: last 3 user messages (for privacy gate — broader context)
+ * - lastText: last user message only (for category scoring — current intent)
+ */
+export function extractUserText(body: AnthropicRequestBody): { recentText: string; lastText: string } {
+  if (!body.messages || !Array.isArray(body.messages)) return { recentText: '', lastText: '' };
+
+  const userMessages = body.messages.filter(m => m.role === 'user');
+  const recent = userMessages.slice(-3).map(extractMessageText);
+  const last = userMessages.slice(-1).map(extractMessageText);
+
+  return {
+    recentText: recent.join(' '),
+    lastText: last.join(' '),
+  };
 }
 
 // ── Escalation map ──────────────────────────────────────────
@@ -47,7 +59,7 @@ const ESCALATION_MAP: Partial<Record<Category, Category>> = {
 export async function route(
   body: AnthropicRequestBody,
 ): Promise<RoutingDecision> {
-  const userText = extractUserText(body);
+  const { recentText, lastText } = extractUserText(body);
   const config = routingConfig;
 
   const trace: DecisionTrace = {
@@ -56,8 +68,10 @@ export async function route(
     classifier_used: false,
   };
 
-  // Step 1: Rules-based classification (includes privacy gate)
-  let result: ClassifierResult = classifyByRules(userText, config);
+  // Step 1: Rules-based classification
+  // Privacy gate checks recent context (last 3 messages)
+  // Category scoring checks only the last message (current intent)
+  let result: ClassifierResult = classifyByRules(recentText, lastText, config);
   trace.rules_hit = [...result.rules_hit];
 
   // Check if privacy gate was triggered
@@ -75,7 +89,7 @@ export async function route(
     const t0Start = Date.now();
 
     result = await classifyByT0(
-      userText,
+      lastText,
       result,
       config.classifier.t0_model,
       config.classifier.t0_timeout_ms,
