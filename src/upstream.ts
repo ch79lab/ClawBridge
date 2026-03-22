@@ -405,144 +405,18 @@ export function proxyToAnthropic(
   });
 }
 
-// ── ChatGPT Backend API Protocol Translation ────────────────
+// ── OpenAI-Compatible Proxy (shared by OpenAI + OpenRouter) ──
 
-// Model slug mapping: ClawBridge model names → ChatGPT backend slugs
-const CHATGPT_MODEL_SLUGS: Record<string, string> = {
-  'gpt-5.4': 'gpt-5.4',
-  'gpt-5.4-mini': 'gpt-5.4-mini',
-  'gpt-4o': 'gpt-4o',
-  'gpt-4o-mini': 'gpt-4o-mini',
-  'gpt-4.1': 'gpt-4.1',
-  'gpt-4.1-mini': 'gpt-4.1-mini',
-};
-
-function toChatGPTBody(body: AnthropicRequestBody, model: string): Record<string, unknown> {
-  const parentId = randomUUID();
-  const messageId = randomUUID();
-
-  // Build parts from last user message
-  const userMessages = (body.messages || []).filter(m => m.role === 'user');
-  const lastMsg = userMessages[userMessages.length - 1];
-  let parts: Array<string | Record<string, unknown>> = [''];
-
-  if (lastMsg) {
-    if (typeof lastMsg.content === 'string') {
-      parts = [lastMsg.content];
-    } else if (Array.isArray(lastMsg.content)) {
-      parts = lastMsg.content.map(block => {
-        if (block.type === 'text') return block.text || '';
-        if (block.type === 'image') {
-          const source = block.source as Record<string, string> | undefined;
-          if (source?.type === 'base64') {
-            return {
-              asset_pointer: `data:${source.media_type};base64,${source.data}`,
-              content_type: 'image_asset_pointer',
-            };
-          }
-        }
-        return '';
-      });
-    }
-  }
-
-  const result: Record<string, unknown> = {
-    action: 'next',
-    messages: [{
-      id: messageId,
-      author: { role: 'user' },
-      content: { content_type: 'text', parts },
-      role: 'user',
-    }],
-    model: CHATGPT_MODEL_SLUGS[model] || model,
-    parent_message_id: parentId,
-    history_and_training_disabled: true,
-  };
-
-  // Add system message if present
-  if (body.system) {
-    const systemText = typeof body.system === 'string' ? body.system : JSON.stringify(body.system);
-    result.system_message = systemText;
-  }
-
-  return result;
-}
-
-function fromChatGPTSSE(sseText: string, model: string): Record<string, unknown> {
-  // Parse SSE stream — find last data event before [DONE]
-  const lines = sseText.split('\n');
-  let lastData: Record<string, unknown> | null = null;
-
-  for (const line of lines) {
-    if (line.startsWith('data: ') && !line.includes('[DONE]')) {
-      try {
-        const parsed = JSON.parse(line.slice(6));
-        if (parsed?.message?.content?.parts) {
-          lastData = parsed;
-        }
-      } catch { /* skip malformed lines */ }
-    }
-  }
-
-  if (!lastData) {
-    return {
-      id: `msg_openai_${Date.now()}`,
-      type: 'message',
-      role: 'assistant',
-      model: `openai/${model}`,
-      content: [{ type: 'text', text: '' }],
-      stop_reason: 'end_turn',
-      usage: { input_tokens: 0, output_tokens: 0 },
-    };
-  }
-
-  const message = lastData.message as Record<string, unknown>;
-  const content = message?.content as Record<string, unknown>;
-  const parts = content?.parts as string[] || [''];
-  const text = parts.join('');
-
-  return {
-    id: `msg_openai_${Date.now()}`,
-    type: 'message',
-    role: 'assistant',
-    model: `openai/${model}`,
-    content: [{ type: 'text', text }],
-    stop_reason: 'end_turn',
-    usage: {
-      input_tokens: 0, // ChatGPT backend doesn't expose token counts
-      output_tokens: 0,
-    },
-  };
-}
-
-// ── OpenAI Proxy (supports both API and ChatGPT Backend) ────
-
-export async function proxyToOpenAI(
-  body: AnthropicRequestBody,
-  model: string,
-  timeoutMs: number,
-): Promise<UpstreamResult> {
-  const providerAuth = getProviderAuth('openai', authConfig);
-  if (!providerAuth) {
-    return { ok: false, error: 'OpenAI provider not configured in auth.json' };
-  }
-
-  // Route based on auth method: oauth → ChatGPT backend, api_key → OpenAI API
-  if (providerAuth.method === 'oauth') {
-    return proxyToOpenAIChatGPT(body, model, timeoutMs, providerAuth);
-  }
-  return proxyToOpenAIAPI(body, model, timeoutMs, providerAuth);
-}
-
-async function proxyToOpenAIAPI(
+async function proxyToOpenAICompatible(
   body: AnthropicRequestBody,
   model: string,
   timeoutMs: number,
   providerAuth: ProviderAuthConfig,
+  baseUrl: string,
+  providerName: string,
 ): Promise<UpstreamResult> {
-  const openaiHeaders = buildAuthHeaders(providerAuth);
-  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com';
-  const url = `${baseUrl}/v1/chat/completions`;
+  const headers = buildAuthHeaders(providerAuth);
+  const url = `${baseUrl}/chat/completions`;
   const payload = JSON.stringify(toOpenAIBody(body, model));
 
   try {
@@ -553,7 +427,7 @@ async function proxyToOpenAIAPI(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...openaiHeaders,
+        ...headers,
       },
       body: payload,
       signal: controller.signal,
@@ -563,7 +437,7 @@ async function proxyToOpenAIAPI(
 
     if (!response.ok) {
       const errBody = await response.text();
-      return { ok: false, status: response.status, body: errBody, error: `openai ${response.status}` };
+      return { ok: false, status: response.status, body: errBody, error: `${providerName} ${response.status}` };
     }
 
     const raw = await response.json() as Record<string, unknown>;
@@ -575,48 +449,28 @@ async function proxyToOpenAIAPI(
   }
 }
 
-async function proxyToOpenAIChatGPT(
+export async function proxyToOpenAI(
   body: AnthropicRequestBody,
   model: string,
   timeoutMs: number,
-  providerAuth: ProviderAuthConfig,
 ): Promise<UpstreamResult> {
-  const token = process.env[providerAuth.credential_env];
-  if (!token) {
-    return { ok: false, error: `${providerAuth.credential_env} not set` };
+  const providerAuth = getProviderAuth('openai', authConfig);
+  if (!providerAuth) {
+    return { ok: false, error: 'OpenAI provider not configured in auth.json' };
   }
+  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  return proxyToOpenAICompatible(body, model, timeoutMs, providerAuth, baseUrl, 'openai');
+}
 
-  const url = 'https://chatgpt.com/backend-api/conversation';
-  const payload = JSON.stringify(toChatGPTBody(body, model));
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'text/event-stream',
-      },
-      body: payload,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      return { ok: false, status: response.status, body: errBody, error: `openai_chatgpt ${response.status}` };
-    }
-
-    // ChatGPT returns SSE stream — collect all events
-    const sseText = await response.text();
-    const anthropicResponse = fromChatGPTSSE(sseText, model);
-    return { ok: true, status: 200, body: JSON.stringify(anthropicResponse) };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: msg };
+export async function proxyToOpenRouter(
+  body: AnthropicRequestBody,
+  model: string,
+  timeoutMs: number,
+): Promise<UpstreamResult> {
+  const providerAuth = getProviderAuth('openrouter', authConfig);
+  if (!providerAuth) {
+    return { ok: false, error: 'OpenRouter provider not configured in auth.json' };
   }
+  const baseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+  return proxyToOpenAICompatible(body, model, timeoutMs, providerAuth, baseUrl, 'openrouter');
 }

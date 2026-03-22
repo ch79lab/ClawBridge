@@ -1,13 +1,19 @@
 {
   "routes": {
     "default": {
+      "model": "x-ai/grok-4.1-fast",
+      "upstream": "openrouter",
+      "timeoutMs": 30000,
+      "thinking": false
+    },
+    "action": {
       "model": "claude-haiku-4-5",
       "upstream": "anthropic",
       "timeoutMs": 30000,
       "thinking": false
     },
     "complex": {
-      "model": "claude-sonnet-4-5",
+      "model": "claude-sonnet-4-6",
       "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
@@ -16,12 +22,6 @@
       "model": "gemini-2.5-flash",
       "upstream": "google",
       "timeoutMs": 45000,
-      "thinking": false
-    },
-    "action": {
-      "model": "claude-haiku-4-5",
-      "upstream": "anthropic",
-      "timeoutMs": 30000,
       "thinking": false
     },
     "batch": {
@@ -37,14 +37,14 @@
       "thinking": false
     },
     "code": {
-      "model": "claude-sonnet-4-5",
-      "upstream": "anthropic",
+      "model": "minimax/minimax-m2.5",
+      "upstream": "openrouter",
       "timeoutMs": 60000,
       "thinking": false
     },
     "deep_analysis": {
-      "model": "claude-sonnet-4-5",
-      "upstream": "anthropic",
+      "model": "gemini-3.1-pro-preview",
+      "upstream": "google",
       "timeoutMs": 90000,
       "thinking": false
     },
@@ -55,23 +55,23 @@
       "thinking": false
     },
     "private_complex": {
-      "model": "claude-sonnet-4-5",
+      "model": "claude-sonnet-4-6",
       "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
     }
   },
   "fallback_map": {
-    "code":          { "model": "claude-sonnet-4-5", "upstream": "anthropic", "timeoutMs": 60000 },
-    "deep_analysis": { "model": "claude-sonnet-4-5", "upstream": "anthropic", "timeoutMs": 60000 },
-    "vision":        { "model": "gemini-2.5-flash",  "upstream": "google",    "timeoutMs": 45000 },
-    "_error":        { "model": "gpt-5.4-mini",      "upstream": "openai",    "timeoutMs": 30000 }
+    "code":          { "model": "claude-sonnet-4-6",     "upstream": "anthropic", "timeoutMs": 60000 },
+    "deep_analysis": { "model": "claude-sonnet-4-6",     "upstream": "anthropic", "timeoutMs": 60000 },
+    "vision":        { "model": "claude-haiku-4-5",      "upstream": "anthropic", "timeoutMs": 30000 },
+    "_error":        { "model": "gemini-2.5-flash-lite", "upstream": "google",    "timeoutMs": 20000 }
   },
   "fallback_chain": [
     {
-      "model": "gpt-5.4-mini",
-      "upstream": "openai",
-      "timeoutMs": 30000
+      "model": "gemini-2.5-flash-lite",
+      "upstream": "google",
+      "timeoutMs": 20000
     },
     {
       "model": "gemini-2.5-flash",
@@ -84,7 +84,7 @@
       "timeoutMs": 30000
     },
     {
-      "model": "claude-sonnet-4-5",
+      "model": "claude-sonnet-4-6",
       "upstream": "anthropic",
       "timeoutMs": 60000
     }

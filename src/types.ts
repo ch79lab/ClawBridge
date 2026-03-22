@@ -27,7 +27,7 @@ export const CATEGORIES: readonly Category[] = [
   'deep_analysis',
 ] as const;
 
-export type Upstream = 'ollama' | 'anthropic' | 'google' | 'openai';
+export type Upstream = 'ollama' | 'anthropic' | 'google' | 'openai' | 'openrouter';
 
 // ── Classifier ──────────────────────────────────────────────
 

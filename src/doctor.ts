@@ -319,7 +319,7 @@ async function main(): Promise<void> {
   await checkPort(port);
   await checkUpstream('anthropic', 'https://api.anthropic.com/v1/messages');
   await checkUpstream('google', 'https://generativelanguage.googleapis.com/v1beta/models');
-  await checkUpstream('openai', 'https://api.openai.com/v1/models');
+  await checkUpstream('openrouter', 'https://openrouter.ai/api/v1/models');
 
   // Print results
   let hasFailure = false;

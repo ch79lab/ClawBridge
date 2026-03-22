@@ -73,7 +73,7 @@ vi.mock('../src/logger.js', () => ({
 
 function makeBody(text: string): AnthropicRequestBody {
   return {
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     messages: [{ role: 'user', content: text }],
     max_tokens: 1024,
   };
@@ -143,7 +143,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('private_complex');
     expect(decision.upstream).toBe('anthropic');
-    expect(decision.model).toBe('claude-sonnet-4-5');
+    expect(decision.model).toBe('claude-sonnet-4-6');
   });
 
   it('routes analysis keywords to google/gemini-flash', async () => {
@@ -161,7 +161,7 @@ describe('router', () => {
     );
     expect(decision.category).toBe('complex');
     expect(decision.upstream).toBe('anthropic');
-    expect(decision.model).toBe('claude-sonnet-4-5');
+    expect(decision.model).toBe('claude-sonnet-4-6');
   });
 
   it('routes action keywords to anthropic/haiku', async () => {
@@ -206,7 +206,7 @@ describe('router', () => {
   it('classifies by last message, not conversation history', async () => {
     // Previous message has batch keywords, current message has analysis keywords
     const body: AnthropicRequestBody = {
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       messages: [
         { role: 'user', content: 'extraia todos os emails e classifique cada um em lote' },
         { role: 'assistant', content: 'done' },
@@ -223,7 +223,7 @@ describe('router', () => {
     // Previous message had "senha", current message is normal
     // Privacy gate now only checks lastText to avoid false positives
     const body: AnthropicRequestBody = {
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       messages: [
         { role: 'user', content: 'a senha é 12345' },
         { role: 'assistant', content: 'ok' },

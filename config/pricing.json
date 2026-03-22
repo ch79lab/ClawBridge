@@ -1,44 +1,36 @@
 {
   "models": {
+    "claude-sonnet-4-6": {
+      "input_per_1m": 3.00,
+      "output_per_1m": 15.00
+    },
     "claude-sonnet-4-5": {
       "input_per_1m": 3.00,
       "output_per_1m": 15.00
     },
     "claude-haiku-4-5": {
-      "input_per_1m": 0.80,
-      "output_per_1m": 4.00
+      "input_per_1m": 1.00,
+      "output_per_1m": 5.00
     },
     "gemini-2.5-flash": {
       "input_per_1m": 0.15,
       "output_per_1m": 0.60
     },
     "gemini-2.5-flash-lite": {
-      "input_per_1m": 0.075,
-      "output_per_1m": 0.30
+      "input_per_1m": 0.05,
+      "output_per_1m": 0.20
     },
-    "gpt-4o": {
-      "input_per_1m": 2.50,
-      "output_per_1m": 10.00
-    },
-    "gpt-4o-mini": {
-      "input_per_1m": 0.15,
-      "output_per_1m": 0.60
-    },
-    "gpt-4.1": {
+    "gemini-3.1-pro-preview": {
       "input_per_1m": 2.00,
-      "output_per_1m": 8.00
+      "output_per_1m": 12.00
     },
-    "gpt-4.1-mini": {
-      "input_per_1m": 0.40,
-      "output_per_1m": 1.60
+    "x-ai/grok-4.1-fast": {
+      "input_per_1m": 0.20,
+      "output_per_1m": 0.50
     },
-    "gpt-5.4": {
-      "input_per_1m": 2.50,
-      "output_per_1m": 10.00
-    },
-    "gpt-5.4-mini": {
-      "input_per_1m": 0.15,
-      "output_per_1m": 0.60
+    "minimax/minimax-m2.5": {
+      "input_per_1m": 0.30,
+      "output_per_1m": 1.20
     }
   },
   "default": {
