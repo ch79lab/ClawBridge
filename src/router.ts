@@ -8,6 +8,7 @@ import { classifyByT0 } from './classifier_t0.js';
 import { getBudgetStatus, applyBudgetDowngrade } from './budget.js';
 import { applyCapabilityUpgrade } from './capabilities.js';
 import { reorderFallbackChain, getModelHealthScore } from './health.js';
+import { checkTierRateLimit } from './rate-limiter.js';
 import { log } from './logger.js';
 import type {
   AnthropicRequestBody,
@@ -74,7 +75,7 @@ export async function route(
   // Step 1: Rules-based classification
   // Privacy gate checks recent context (last 3 messages)
   // Category scoring checks only the last message (current intent)
-  let result: ClassifierResult = classifyByRules(recentText, lastText, config);
+  let result: ClassifierResult = classifyByRules(recentText, lastText, config, body);
   trace.rules_hit = [...result.rules_hit];
 
   // Check if privacy gate was triggered
@@ -123,10 +124,37 @@ export async function route(
   }
 
   // Step 4: Lookup route config
-  let routeModel = config.routes[result.category].model;
-  let routeUpstream = config.routes[result.category].upstream;
-  const routeTimeoutMs = config.routes[result.category].timeoutMs;
-  const routeThinking = config.routes[result.category].thinking;
+  const routeKey = result.category as string;
+  const routeEntry = config.routes[routeKey] || config.routes['default'];
+  let routeModel = routeEntry.model;
+  let routeUpstream = routeEntry.upstream;
+  let routeTimeoutMs = routeEntry.timeoutMs;
+  let routeThinking = routeEntry.thinking;
+
+  // Step 4a: Rate limit check
+  const rateLimit = await checkTierRateLimit(result.category);
+  if (rateLimit.blocked && !trace.privacy_gate) {
+    trace.rate_limited = true;
+    trace.rate_limit_tier = result.category;
+
+    // Use fallback_map for this tier if available
+    const fallbackEntry = config.fallback_map?.[result.category];
+    if (fallbackEntry) {
+      trace.rate_limit_fallback = `${fallbackEntry.upstream}/${fallbackEntry.model}`;
+      routeModel = fallbackEntry.model;
+      routeUpstream = fallbackEntry.upstream;
+      routeTimeoutMs = fallbackEntry.timeoutMs;
+      routeThinking = false;
+      log.warn({
+        msg: 'rate_limited',
+        tier: result.category,
+        fallback_to: trace.rate_limit_fallback,
+        hourly: `${rateLimit.hourly_used}/${rateLimit.hourly_limit}`,
+        daily: `${rateLimit.daily_used}/${rateLimit.daily_limit}`,
+        oauth_blocked: rateLimit.oauth_blocked,
+      });
+    }
+  }
 
   // Step 4b: Budget-aware downgrade
   const budgetStatus = await getBudgetStatus();

@@ -31,6 +31,14 @@
     "gpt-4.1-mini": {
       "input_per_1m": 0.40,
       "output_per_1m": 1.60
+    },
+    "gpt-5.4": {
+      "input_per_1m": 2.50,
+      "output_per_1m": 10.00
+    },
+    "gpt-5.4-mini": {
+      "input_per_1m": 0.15,
+      "output_per_1m": 0.60
     }
   },
   "default": {

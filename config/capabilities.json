@@ -55,6 +55,20 @@
       "max_output_tokens": 32768,
       "strengths": ["coding", "speed", "cost_effective"],
       "tier": 2
+    },
+    "gpt-5.4": {
+      "capabilities": ["tool_use", "vision", "long_context", "code", "multilingual", "thinking"],
+      "max_context_tokens": 1048576,
+      "max_output_tokens": 32768,
+      "strengths": ["vision", "coding", "deep_analysis", "long_context"],
+      "tier": 3
+    },
+    "gpt-5.4-mini": {
+      "capabilities": ["tool_use", "vision", "code", "multilingual"],
+      "max_context_tokens": 128000,
+      "max_output_tokens": 16384,
+      "strengths": ["speed", "cost_effective", "general_purpose"],
+      "tier": 1
     }
   },
   "request_detection": {

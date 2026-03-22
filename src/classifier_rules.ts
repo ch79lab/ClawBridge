@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════
-// ClawBridge — Rules-Based Classifier
+// ClawBridge — Rules-Based Classifier (v2 — Short-Circuit)
 // ═══════════════════════════════════════════════════════════
 
-import type { Category, ClassifierResult, RoutingConfig } from './types.js';
+import type { Category, ClassifierResult, RoutingConfig, AnthropicRequestBody } from './types.js';
+import { estimateTokens } from './token_estimator.js';
 
 // ── Privacy Gate ────────────────────────────────────────────
 
@@ -12,35 +13,28 @@ function checkPrivacyGate(
 ): { isPrivate: boolean; reason?: string } {
   const lower = message.toLowerCase();
 
-  // Check privacy keywords
   for (const keyword of config.privacy.keywords) {
     if (lower.includes(keyword.toLowerCase())) {
       return { isPrivate: true, reason: `keyword:"${keyword}"` };
     }
   }
 
-  // Check PII regexes
   for (const pattern of config.privacy.pii_regexes) {
     try {
       const re = new RegExp(pattern);
       if (re.test(message)) {
         return { isPrivate: true, reason: `pii_pattern` };
       }
-    } catch {
-      // Invalid regex — skip
-    }
+    } catch { /* skip */ }
   }
 
-  // Check sensitive patterns (API keys, tokens, SSH keys)
   for (const pattern of config.privacy.sensitive_patterns) {
     try {
       const re = new RegExp(pattern, 'i');
       if (re.test(message)) {
         return { isPrivate: true, reason: `sensitive_pattern` };
       }
-    } catch {
-      // Invalid regex — skip
-    }
+    } catch { /* skip */ }
   }
 
   return { isPrivate: false };
@@ -53,7 +47,30 @@ function isComplexPrivate(message: string, config: RoutingConfig): boolean {
   );
 }
 
-// ── Category Scoring ────────────────────────────────────────
+// ── Detection helpers ───────────────────────────────────────
+
+function hasImages(body: AnthropicRequestBody): boolean {
+  return (body.messages || []).some(m => {
+    if (!Array.isArray(m.content)) return false;
+    return m.content.some(b => b.type === 'image' || b.type === 'image_url');
+  });
+}
+
+function hasToolCall(body: AnthropicRequestBody): boolean {
+  return !!(body.tools && body.tools.length > 0);
+}
+
+function hasCodeBlocks(text: string): boolean {
+  return /```[\s\S]*?```/.test(text);
+}
+
+const FILE_EXTENSIONS = /\.(ts|js|py|go|rs|java|rb|php|c|cpp|h|css|html|json|yaml|yml|toml|sh|bash|sql|md|tsx|jsx)\b/i;
+
+function hasFileReferences(text: string): boolean {
+  return FILE_EXTENSIONS.test(text);
+}
+
+// ── Keyword counting ────────────────────────────────────────
 
 function countHits(text: string, keywords: string[]): number {
   const lower = text.toLowerCase();
@@ -62,6 +79,37 @@ function countHits(text: string, keywords: string[]): number {
     0,
   );
 }
+
+// ── Domain detection ────────────────────────────────────────
+
+type Domain = 'code' | 'analysis' | 'reasoning' | 'none';
+
+function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain; hits: number } {
+  const codeKeywords = config.rules.code || [];
+  const analysisKeywords = config.rules.analysis || [];
+  const reasoningKeywords = config.privacy.complexity_keywords || [];
+
+  const codeHits = countHits(lastText, codeKeywords)
+    + (hasCodeBlocks(lastText) ? 2 : 0)
+    + (hasFileReferences(lastText) ? 1 : 0);
+  const analysisHits = countHits(lastText, analysisKeywords);
+  const reasoningHits = countHits(lastText, reasoningKeywords);
+
+  // Highest score wins
+  if (codeHits > analysisHits && codeHits > reasoningHits && codeHits > 0) {
+    return { domain: 'code', hits: codeHits };
+  }
+  if (analysisHits > codeHits && analysisHits > reasoningHits && analysisHits > 0) {
+    return { domain: 'analysis', hits: analysisHits };
+  }
+  if (reasoningHits > 0) {
+    return { domain: 'reasoning', hits: reasoningHits };
+  }
+
+  return { domain: 'none', hits: 0 };
+}
+
+// ── Legacy scoring (for batch/action/complex fallback) ──────
 
 interface CategoryScore {
   category: Category;
@@ -74,15 +122,15 @@ function scoreCategories(
   message: string,
   config: RoutingConfig,
 ): CategoryScore[] {
-  const categories: Array<{ key: keyof typeof config.rules; category: Category }> = [
+  const scorable: Array<{ key: string; category: Category }> = [
     { key: 'complex', category: 'complex' },
     { key: 'analysis', category: 'analysis' },
     { key: 'action', category: 'action' },
     { key: 'batch', category: 'batch' },
   ];
 
-  return categories.map(({ key, category }) => {
-    const keywords = config.rules[key];
+  return scorable.map(({ key, category }) => {
+    const keywords = config.rules[key] || [];
     const hits = countHits(message, keywords);
     const total = keywords.length;
     const score = total > 0 ? hits / total : 0;
@@ -90,22 +138,28 @@ function scoreCategories(
   });
 }
 
-// ── Main classifier ─────────────────────────────────────────
+// ── Main classifier (v2 — short-circuit) ────────────────────
+
+const TOKEN_THRESHOLD = 50000;
 
 /**
- * Classify a message using keyword rules.
- * @param recentText - Last 3 user messages (for privacy gate — broader context)
- * @param lastText - Last user message only (for category scoring — current intent)
- * @param config - Routing configuration
+ * Classify using short-circuit evaluation order:
+ * 1. Privacy gate → private_simple/private_complex
+ * 2. Image in payload → vision
+ * 3. Batch keywords → batch
+ * 4. Tool call in payload → action
+ * 5. Domain + complexity → code/deep_analysis/complex/analysis/default
  */
 export function classifyByRules(
   recentText: string,
   lastText: string,
   config: RoutingConfig,
+  body?: AnthropicRequestBody,
 ): ClassifierResult {
   const rules_hit: string[] = [];
+  const estimatedTokens = estimateTokens(lastText);
 
-  // Step 1: Privacy gate checks recent context (last 3 messages)
+  // ── Step 1: Privacy gate (recent context) ──
   const privacy = checkPrivacyGate(recentText, config);
   if (privacy.isPrivate) {
     const isComplex = isComplexPrivate(lastText, config);
@@ -115,36 +169,73 @@ export function classifyByRules(
     return { category, confidence: 1.0, rules_hit };
   }
 
-  // Step 2: Category scoring (only the current message)
+  // ── Step 2: Image detection → vision ──
+  if (body && hasImages(body)) {
+    rules_hit.push('image_detected');
+    return { category: 'vision', confidence: 0.95, rules_hit };
+  }
+
+  // ── Step 3: Batch detection ──
+  const batchKeywords = config.rules.batch || [];
+  const batchHits = countHits(lastText, batchKeywords);
+  if (batchHits >= 2) {
+    rules_hit.push(`batch_hits:${batchHits}`);
+    return { category: 'batch', confidence: 0.85, rules_hit };
+  }
+
+  // ── Step 4: Tool call detection → action ──
+  if (body && hasToolCall(body)) {
+    rules_hit.push('tool_call_detected');
+    return { category: 'action', confidence: 0.90, rules_hit };
+  }
+
+  // ── Step 5: Domain + complexity classification ──
+  const { domain, hits: domainHits } = detectDomain(lastText, config);
+  rules_hit.push(`domain:${domain}(${domainHits})`);
+
+  if (domain === 'code') {
+    if (estimatedTokens > TOKEN_THRESHOLD) {
+      rules_hit.push(`tokens:${estimatedTokens}>threshold`);
+      return { category: 'code', confidence: 0.90, rules_hit };
+    }
+    // Code domain but under threshold → complex (Sonnet)
+    return { category: 'complex', confidence: 0.80, rules_hit };
+  }
+
+  if (domain === 'analysis') {
+    if (estimatedTokens > TOKEN_THRESHOLD) {
+      rules_hit.push(`tokens:${estimatedTokens}>threshold`);
+      return { category: 'deep_analysis', confidence: 0.90, rules_hit };
+    }
+    return { category: 'analysis', confidence: 0.80, rules_hit };
+  }
+
+  if (domain === 'reasoning') {
+    return { category: 'complex', confidence: 0.75, rules_hit };
+  }
+
+  // ── Fallback: legacy scoring for ambiguous cases ──
   const scores = scoreCategories(lastText, config);
   const totalHits = scores.reduce((sum, s) => sum + s.hits, 0);
 
-  // No hits at all — low confidence, default to action
   if (totalHits === 0) {
     rules_hit.push('no_keyword_hits');
     return { category: 'action', confidence: 0.3, rules_hit };
   }
 
-  // Sort by score descending, then by hits descending for tiebreak
   scores.sort((a, b) => b.score - a.score || b.hits - a.hits);
-
   const best = scores[0];
   const second = scores[1];
 
-  // Confidence: ratio of best to total, boosted by absolute hits
   let confidence = best.hits / totalHits;
-  // Boost confidence if there's a clear winner (>2x the second)
   if (second && second.hits > 0 && best.hits >= second.hits * 2) {
     confidence = Math.min(1.0, confidence + 0.15);
   }
-  // Reduce confidence if very few hits overall
   if (totalHits <= 1) {
     confidence = Math.min(confidence, 0.5);
   }
 
-  rules_hit.push(
-    `scores:${scores.map(s => `${s.category}=${s.hits}`).join(',')}`,
-  );
+  rules_hit.push(`scores:${scores.map(s => `${s.category}=${s.hits}`).join(',')}`);
 
   return {
     category: best.category,

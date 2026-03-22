@@ -110,7 +110,7 @@ function validateRouting(data: unknown): string | null {
   if (!cfg.rules) return 'Missing "rules" section';
 
   const routes = cfg.routes as Record<string, unknown>;
-  const required = ['complex', 'analysis', 'action', 'batch', 'private_simple', 'private_complex'];
+  const required = ['complex', 'analysis', 'action', 'batch', 'private_simple', 'private_complex', 'vision', 'code', 'deep_analysis'];
   const missing = required.filter(c => !routes[c]);
   if (missing.length > 0) return `Missing routes: ${missing.join(', ')}`;
 
@@ -144,6 +144,13 @@ function validateCapabilities(data: unknown): string | null {
   const cfg = data as Record<string, unknown>;
   if (!cfg.models || typeof cfg.models !== 'object') return 'Missing "models" section';
   if (!cfg.request_detection || typeof cfg.request_detection !== 'object') return 'Missing "request_detection" section';
+  return null;
+}
+
+function validateRateLimits(data: unknown): string | null {
+  const cfg = data as Record<string, unknown>;
+  if (!cfg.tiers || typeof cfg.tiers !== 'object') return 'Missing "tiers" section';
+  if (!cfg.oauth_global || typeof cfg.oauth_global !== 'object') return 'Missing "oauth_global" section';
   return null;
 }
 
@@ -302,6 +309,7 @@ async function main(): Promise<void> {
   checkConfig('pricing.json', false, validatePricing);
   checkConfig('budget.json', false, validateBudget);
   checkConfig('capabilities.json', false, validateCapabilities);
+  checkConfig('rate-limits.json', false, validateRateLimits);
   checkAuthConfig();
   checkDataDir();
   checkRoutingCoherence();

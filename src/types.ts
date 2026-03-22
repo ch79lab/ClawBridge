@@ -8,7 +8,10 @@ export type Category =
   | 'action'
   | 'batch'
   | 'private_simple'
-  | 'private_complex';
+  | 'private_complex'
+  | 'vision'
+  | 'code'
+  | 'deep_analysis';
 
 export const CATEGORIES: readonly Category[] = [
   'complex',
@@ -17,6 +20,9 @@ export const CATEGORIES: readonly Category[] = [
   'batch',
   'private_simple',
   'private_complex',
+  'vision',
+  'code',
+  'deep_analysis',
 ] as const;
 
 export type Upstream = 'ollama' | 'anthropic' | 'google' | 'openai';
@@ -66,6 +72,11 @@ export interface DecisionTrace {
   capability_missing?: string[];
   fallback_reordered?: boolean;
   primary_health_score?: number;
+  rate_limited?: boolean;
+  rate_limit_tier?: string;
+  rate_limit_fallback?: string;
+  domain_detected?: string;
+  token_threshold_exceeded?: boolean;
 }
 
 // ── Config (routing.json shape) ─────────────────────────────
@@ -78,8 +89,9 @@ export interface RouteConfig {
 }
 
 export interface RoutingConfig {
-  routes: Record<Category, RouteConfig>;
+  routes: Record<string, RouteConfig>;
   fallback_chain: FallbackStep[];
+  fallback_map?: Record<string, FallbackStep>;
   classifier: {
     rules_to_t0_threshold: number;
     escalation_threshold: number;
@@ -92,12 +104,33 @@ export interface RoutingConfig {
     sensitive_patterns: string[];
     complexity_keywords: string[];
   };
-  rules: {
-    complex: string[];
-    analysis: string[];
-    action: string[];
-    batch: string[];
-  };
+  rules: Record<string, string[]>;
+}
+
+// ── Rate Limiting ────────────────────────────────────────
+
+export interface TierRateLimit {
+  hourly: number;
+  daily: number;
+}
+
+export interface RateLimitConfig {
+  tiers: Partial<Record<string, TierRateLimit>>;
+  oauth_global: TierRateLimit;
+  oauth_tiers: string[];
+  oauth_priority: string[];
+}
+
+export interface RateLimitStatus {
+  tier: string;
+  hourly_used: number;
+  hourly_limit: number;
+  daily_used: number;
+  daily_limit: number;
+  blocked: boolean;
+  oauth_hourly_used: number;
+  oauth_daily_used: number;
+  oauth_blocked: boolean;
 }
 
 // ── Anthropic API types (subset) ────────────────────────────

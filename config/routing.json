@@ -30,6 +30,24 @@
       "timeoutMs": 20000,
       "thinking": false
     },
+    "vision": {
+      "model": "gpt-5.4",
+      "upstream": "openai",
+      "timeoutMs": 45000,
+      "thinking": false
+    },
+    "code": {
+      "model": "gpt-5.4",
+      "upstream": "openai",
+      "timeoutMs": 60000,
+      "thinking": false
+    },
+    "deep_analysis": {
+      "model": "gpt-5.4",
+      "upstream": "openai",
+      "timeoutMs": 90000,
+      "thinking": true
+    },
     "private_simple": {
       "model": "claude-haiku-4-5",
       "upstream": "anthropic",
@@ -43,7 +61,18 @@
       "thinking": false
     }
   },
+  "fallback_map": {
+    "code":          { "model": "claude-sonnet-4-5", "upstream": "anthropic", "timeoutMs": 60000 },
+    "deep_analysis": { "model": "claude-sonnet-4-5", "upstream": "anthropic", "timeoutMs": 60000 },
+    "vision":        { "model": "gemini-2.5-flash",  "upstream": "google",    "timeoutMs": 45000 },
+    "_error":        { "model": "gpt-5.4-mini",      "upstream": "openai",    "timeoutMs": 30000 }
+  },
   "fallback_chain": [
+    {
+      "model": "gpt-5.4-mini",
+      "upstream": "openai",
+      "timeoutMs": 30000
+    },
     {
       "model": "gemini-2.5-flash",
       "upstream": "google",
@@ -176,7 +205,10 @@
       "leia",
       "read",
       "revise",
-      "review"
+      "review",
+      "documento",
+      "docs",
+      "sintetiza"
     ],
     "action": [
       "reescreva",
@@ -227,6 +259,42 @@
       "process",
       "iterar",
       "iterate"
+    ],
+    "code": [
+      "refactor",
+      "refatorar",
+      "codebase",
+      "repo",
+      "repositório",
+      "multi-file",
+      "debug",
+      "debugar",
+      "implement",
+      "implementar",
+      "pull request",
+      "commit",
+      "merge",
+      "branch",
+      "test",
+      "teste",
+      "unit test",
+      "integration test",
+      "deploy",
+      "pipeline",
+      "dockerfile"
+    ],
+    "deep_analysis": [
+      "sintetiza",
+      "sintetize",
+      "synthesize",
+      "documento longo",
+      "long document",
+      "contexto extenso",
+      "extended context",
+      "análise profunda",
+      "deep analysis",
+      "múltiplos documentos",
+      "multiple documents"
     ]
   }
 }

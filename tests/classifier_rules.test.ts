@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { classifyByRules } from '../src/classifier_rules.js';
-import type { RoutingConfig } from '../src/types.js';
+import type { RoutingConfig, AnthropicRequestBody } from '../src/types.js';
 
 // Load the actual routing config for realistic tests
 import { readFileSync } from 'node:fs';
@@ -13,8 +13,8 @@ const config: RoutingConfig = JSON.parse(
 );
 
 // Helper: for single-message tests, recentText and lastText are the same
-function classify(text: string) {
-  return classifyByRules(text, text, config);
+function classify(text: string, body?: AnthropicRequestBody) {
+  return classifyByRules(text, text, config, body);
 }
 
 describe('classifier_rules', () => {
@@ -177,6 +177,100 @@ describe('classifier_rules', () => {
     it('handles case-insensitive matching', () => {
       const result = classify('RESUMA O DOCUMENTO E COMPARE');
       expect(result.category).toBe('analysis');
+    });
+  });
+
+  describe('vision detection', () => {
+    it('classifies as vision when images present in body', () => {
+      const body: AnthropicRequestBody = {
+        model: 'test',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'What is this?' },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'abc' } },
+          ],
+        }],
+      };
+      const result = classify('What is this?', body);
+      expect(result.category).toBe('vision');
+      expect(result.confidence).toBe(0.95);
+      expect(result.rules_hit).toContain('image_detected');
+    });
+
+    it('does not trigger vision without images', () => {
+      const body: AnthropicRequestBody = {
+        model: 'test',
+        messages: [{ role: 'user', content: 'describe the architecture' }],
+      };
+      const result = classify('describe the architecture', body);
+      expect(result.category).not.toBe('vision');
+    });
+  });
+
+  describe('code domain detection', () => {
+    it('classifies as complex when code domain + tokens under threshold', () => {
+      const result = classify('refactor the codebase and debug the implementation');
+      expect(result.category).toBe('complex');
+      expect(result.rules_hit.some(r => r.startsWith('domain:code'))).toBe(true);
+    });
+
+    it('detects code blocks as code domain signal', () => {
+      const text = 'Fix this:\n```typescript\nfunction foo() {}\n```';
+      const result = classify(text);
+      expect(result.rules_hit.some(r => r.startsWith('domain:code'))).toBe(true);
+    });
+
+    it('detects file extensions as code domain signal', () => {
+      const result = classify('update the handler in server.ts');
+      expect(result.rules_hit.some(r => r.startsWith('domain:code'))).toBe(true);
+    });
+  });
+
+  describe('tool call detection', () => {
+    it('classifies as action when tools present in body', () => {
+      const body: AnthropicRequestBody = {
+        model: 'test',
+        messages: [{ role: 'user', content: 'call the function' }],
+        tools: [{ name: 'get_weather', description: 'get weather', input_schema: {} }],
+      };
+      const result = classify('call the function', body);
+      expect(result.category).toBe('action');
+      expect(result.confidence).toBe(0.90);
+      expect(result.rules_hit).toContain('tool_call_detected');
+    });
+  });
+
+  describe('short-circuit priority', () => {
+    it('vision takes priority over tool call', () => {
+      const body: AnthropicRequestBody = {
+        model: 'test',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'analyze this' },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'abc' } },
+          ],
+        }],
+        tools: [{ name: 'tool1', description: 'test', input_schema: {} }],
+      };
+      const result = classify('analyze this', body);
+      expect(result.category).toBe('vision');
+    });
+
+    it('privacy takes priority over vision', () => {
+      const body: AnthropicRequestBody = {
+        model: 'test',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'minha senha é 123' },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'abc' } },
+          ],
+        }],
+      };
+      const result = classify('minha senha é 123', body);
+      expect(result.category).toMatch(/^private_/);
     });
   });
 });

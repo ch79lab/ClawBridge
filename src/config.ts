@@ -5,7 +5,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { RoutingConfig, PricingConfig, BudgetConfig, CapabilitiesConfig, AuthConfig } from './types.js';
+import type { RoutingConfig, PricingConfig, BudgetConfig, CapabilitiesConfig, AuthConfig, RateLimitConfig } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -123,6 +123,20 @@ function loadAuthConfig(): AuthConfig | null {
 }
 
 export const authConfig: AuthConfig | null = loadAuthConfig();
+
+// ── Load rate-limits.json ───────────────────────────────
+
+function loadRateLimitConfig(): RateLimitConfig | null {
+  const configPath = join(ROOT, 'config', 'rate-limits.json');
+  if (!existsSync(configPath)) return null;
+  try {
+    return JSON.parse(readFileSync(configPath, 'utf8')) as RateLimitConfig;
+  } catch {
+    return null;
+  }
+}
+
+export const rateLimitConfig: RateLimitConfig | null = loadRateLimitConfig();
 
 // ── Environment accessors ───────────────────────────────────
 

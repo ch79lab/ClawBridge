@@ -1,0 +1,11 @@
+{
+  "tiers": {
+    "complex":       { "hourly": 10, "daily": 100 },
+    "code":          { "hourly": 5,  "daily": 40 },
+    "deep_analysis": { "hourly": 5,  "daily": 30 },
+    "vision":        { "hourly": 5,  "daily": 30 }
+  },
+  "oauth_global":    { "hourly": 20, "daily": 80 },
+  "oauth_tiers": ["vision", "code", "deep_analysis"],
+  "oauth_priority": ["deep_analysis", "code", "vision"]
+}

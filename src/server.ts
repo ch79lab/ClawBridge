@@ -15,6 +15,7 @@ import { recordUsage, extractTokensFromBody, calculateCost, getUsageSummary, get
 import { getBudgetStatus, getRegretStats } from './budget.js';
 import { detectRequiredCapabilities, getModelCapabilities } from './capabilities.js';
 import { recordOutcome, getHealthStatus } from './health.js';
+import { getAllRateLimitStatus } from './rate-limiter.js';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
@@ -200,6 +201,14 @@ async function handleRequest(
 
   if (clientReq.url === '/v1/clawbridge/budget' && clientReq.method === 'GET') {
     const status = await getBudgetStatus();
+    clientRes.writeHead(200, { 'Content-Type': 'application/json' });
+    clientRes.end(JSON.stringify(status, null, 2));
+    return;
+  }
+
+  // Rate limits endpoint
+  if (clientReq.url === '/v1/clawbridge/rate-limits' && clientReq.method === 'GET') {
+    const status = await getAllRateLimitStatus();
     clientRes.writeHead(200, { 'Content-Type': 'application/json' });
     clientRes.end(JSON.stringify(status, null, 2));
     return;

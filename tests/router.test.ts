@@ -42,6 +42,8 @@ vi.mock('../src/config.js', async () => {
     isShadowMode: () => false,
     shouldStorePreview: () => false,
     capabilitiesConfig: null,
+    authConfig: null,
+    rateLimitConfig: null,
   };
 });
 
