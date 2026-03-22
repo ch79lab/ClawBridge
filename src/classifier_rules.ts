@@ -140,7 +140,7 @@ function scoreCategories(
 
 // ── Main classifier (v2 — short-circuit) ────────────────────
 
-const TOKEN_THRESHOLD = 50000;
+const TOKEN_THRESHOLD = 500; // TEMP: lowered from 50000 to test OpenAI OAuth routing
 
 /**
  * Classify using short-circuit evaluation order:
