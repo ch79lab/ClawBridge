@@ -37,16 +37,16 @@
       "thinking": false
     },
     "code": {
-      "model": "claude-sonnet-4-5",
-      "upstream": "anthropic",
+      "model": "gpt-5.4",
+      "upstream": "openai",
       "timeoutMs": 60000,
       "thinking": false
     },
     "deep_analysis": {
-      "model": "claude-sonnet-4-5",
-      "upstream": "anthropic",
+      "model": "gpt-5.4",
+      "upstream": "openai",
       "timeoutMs": 90000,
-      "thinking": false
+      "thinking": true
     },
     "private_simple": {
       "model": "claude-haiku-4-5",
