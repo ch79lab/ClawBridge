@@ -1,8 +1,8 @@
 {
   "routes": {
     "default": {
-      "model": "x-ai/grok-4.1-fast",
-      "upstream": "openrouter",
+      "model": "claude-haiku-4-5",
+      "upstream": "anthropic",
       "timeoutMs": 30000,
       "thinking": false
     },
@@ -62,10 +62,26 @@
     }
   },
   "fallback_map": {
-    "code":          { "model": "claude-sonnet-4-5",     "upstream": "anthropic", "timeoutMs": 60000 },
-    "deep_analysis": { "model": "claude-sonnet-4-5",     "upstream": "anthropic", "timeoutMs": 60000 },
-    "vision":        { "model": "claude-haiku-4-5",      "upstream": "anthropic", "timeoutMs": 30000 },
-    "_error":        { "model": "gemini-2.5-flash-lite", "upstream": "google",    "timeoutMs": 20000 }
+    "code": {
+      "model": "claude-sonnet-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 60000
+    },
+    "deep_analysis": {
+      "model": "claude-sonnet-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 60000
+    },
+    "vision": {
+      "model": "claude-haiku-4-5",
+      "upstream": "anthropic",
+      "timeoutMs": 30000
+    },
+    "_error": {
+      "model": "gemini-2.5-flash-lite",
+      "upstream": "google",
+      "timeoutMs": 20000
+    }
   },
   "fallback_chain": [
     {
@@ -307,50 +323,36 @@
     "code": [
       "refactor",
       "refatorar",
-      "codebase",
-      "repo",
-      "repositório",
-      "multi-file",
       "debug",
       "debugar",
       "implement",
       "implementar",
-      "pull request",
-      "commit",
-      "merge",
-      "branch",
-      "unit test",
-      "integration test",
-      "test suite",
-      "deploy",
-      "pipeline",
-      "dockerfile",
       "endpoint",
-      "middleware",
-      "database schema",
-      "API",
-      "backend",
-      "frontend",
-      "fullstack",
+      "REST",
+      "bug fix",
       "stack trace",
       "error log",
       "type error",
-      "bug fix"
+      "código",
+      "code",
+      "script",
+      "função",
+      "function"
     ],
     "deep_analysis": [
-      "sintetiza",
-      "sintetize",
-      "synthesize",
-      "documento longo",
-      "long document",
-      "contexto extenso",
-      "extended context",
       "análise profunda",
       "deep analysis",
+      "sintetize",
+      "sintetiza",
+      "synthesize",
+      "estado atual",
+      "current state",
+      "documento longo",
+      "long document",
       "múltiplos documentos",
       "multiple documents",
-      "cross-reference",
-      "referência cruzada"
+      "consolidar",
+      "consolidate"
     ]
   }
 }

@@ -1,0 +1,10 @@
+[ERROR] 2026/03/20 03:58:46 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 03:59:15 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 03:59:17 error initializing client: You are not currently signed in. Please run `op signin --help` for instructions
+[ERROR] 2026/03/20 03:59:28 error initializing client: You are not currently signed in. Please run `op signin --help` for instructions
+[ERROR] 2026/03/20 04:00:39 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 04:00:44 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 04:01:01 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 04:01:45 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 04:01:50 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
+[ERROR] 2026/03/20 04:02:03 error while starting process: fork/exec /opt/homebrew/bin/node: no such file or directory
