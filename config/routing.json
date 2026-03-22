@@ -37,8 +37,8 @@
       "thinking": false
     },
     "code": {
-      "model": "minimax/minimax-m2.5",
-      "upstream": "openrouter",
+      "model": "claude-sonnet-4-5",
+      "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
     },

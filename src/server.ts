@@ -531,13 +531,6 @@ async function handleRequest(
 
     if (!clientRes.headersSent) {
       if (fallbackResult.result.ok) {
-        log.info({
-          msg: 'response_debug',
-          request_id: requestId,
-          clientWantsStream,
-          upstream: fallbackResult.finalUpstream,
-          response_preview: responseBody.slice(0, 200),
-        });
         if (clientWantsStream) {
           // Convert buffered response to Anthropic SSE format
           sendAsSSE(clientRes, responseBody);

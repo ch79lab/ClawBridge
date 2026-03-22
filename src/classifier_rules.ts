@@ -180,12 +180,11 @@ export function classifyByRules(
   const estimatedTokens = estimateTokens(cleanedLastText);
 
   // ── Step 1: Privacy gate ──
-  // Keywords: check only lastText (current message intent, not conversation history)
-  // PII regexes + sensitive patterns: check lastText only (actual data in current message)
-  // Note: privacy checks use ORIGINAL text (metadata may contain PII)
-  const privacy = checkPrivacyGate(lastText, config);
+  // Check cleaned text to avoid false positives from OpenClaw workspace/system prompt
+  // that may contain privacy keywords like "credencial", "segredos"
+  const privacy = checkPrivacyGate(cleanedLastText, config);
   if (privacy.isPrivate) {
-    const isComplex = isComplexPrivate(lastText, config);
+    const isComplex = isComplexPrivate(cleanedLastText, config);
     const category: Category = isComplex ? 'private_complex' : 'private_simple';
     rules_hit.push(`privacy_gate:${privacy.reason}`);
     if (isComplex) rules_hit.push('private_complexity:complex');
