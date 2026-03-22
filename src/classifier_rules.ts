@@ -95,11 +95,12 @@ function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain
   const analysisHits = countHits(lastText, analysisKeywords);
   const reasoningHits = countHits(lastText, reasoningKeywords);
 
-  // Highest score wins
+  // Highest score wins. On tie: code > analysis > reasoning (cost-optimized)
   if (codeHits > analysisHits && codeHits > reasoningHits && codeHits > 0) {
     return { domain: 'code', hits: codeHits };
   }
-  if (analysisHits > codeHits && analysisHits > reasoningHits && analysisHits > 0) {
+  if (analysisHits >= reasoningHits && analysisHits > 0) {
+    // Analysis wins ties with reasoning — analysis routes to cheaper Gemini
     return { domain: 'analysis', hits: analysisHits };
   }
   if (reasoningHits > 0) {
