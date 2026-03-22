@@ -73,9 +73,6 @@ export async function route(
     classifier_used: false,
   };
 
-  // TEMP: debug what the classifier sees
-  log.info({ msg: 'classifier_input', lastText_preview: lastText.slice(0, 300), lastText_length: lastText.length, message_count: body.messages?.length });
-
   // Step 1: Rules-based classification
   // Privacy gate checks recent context (last 3 messages)
   // Category scoring checks only the last message (current intent)

@@ -70,6 +70,22 @@ function hasFileReferences(text: string): boolean {
   return FILE_EXTENSIONS.test(text);
 }
 
+// ── Metadata stripping ──────────────────────────────────────
+
+/**
+ * Strip OpenClaw/Telegram metadata from user messages.
+ * OpenClaw prepends conversation metadata as ```json blocks
+ * that pollute keyword classification.
+ */
+function stripMetadata(text: string): string {
+  // Remove "Conversation info (untrusted metadata):\n```json\n{...}\n```" blocks
+  // Remove "Sender (untrusted metadata):\n```json\n{...}\n```" blocks
+  let cleaned = text.replace(/(?:Conversation info|Sender|Chat context|Context)[\s\S]*?```[\s\S]*?```/gi, '');
+  // Also remove any remaining ```json ... ``` blocks that look like metadata
+  cleaned = cleaned.replace(/```json\s*\{[^}]*(?:"message_id"|"sender_id"|"sender"|"timestamp")[^}]*\}\s*```/gi, '');
+  return cleaned.trim();
+}
+
 // ── Keyword counting ────────────────────────────────────────
 
 function countHits(text: string, keywords: string[]): number {
@@ -157,11 +173,16 @@ export function classifyByRules(
   body?: AnthropicRequestBody,
 ): ClassifierResult {
   const rules_hit: string[] = [];
-  const estimatedTokens = estimateTokens(lastText);
+
+  // Strip OpenClaw/Telegram metadata from classification text
+  const cleanedLastText = stripMetadata(lastText);
+  const cleanedRecentText = stripMetadata(recentText);
+  const estimatedTokens = estimateTokens(cleanedLastText);
 
   // ── Step 1: Privacy gate ──
   // Keywords: check only lastText (current message intent, not conversation history)
   // PII regexes + sensitive patterns: check lastText only (actual data in current message)
+  // Note: privacy checks use ORIGINAL text (metadata may contain PII)
   const privacy = checkPrivacyGate(lastText, config);
   if (privacy.isPrivate) {
     const isComplex = isComplexPrivate(lastText, config);
@@ -179,7 +200,7 @@ export function classifyByRules(
 
   // ── Step 3: Batch detection ──
   const batchKeywords = config.rules.batch || [];
-  const batchHits = countHits(lastText, batchKeywords);
+  const batchHits = countHits(cleanedLastText, batchKeywords);
   if (batchHits >= 2) {
     rules_hit.push(`batch_hits:${batchHits}`);
     return { category: 'batch', confidence: 0.85, rules_hit };
@@ -191,7 +212,7 @@ export function classifyByRules(
   // as "action". Tool-use capability is handled by the capability-aware upgrade system instead.
 
   // ── Step 5: Domain + complexity classification ──
-  const { domain, hits: domainHits } = detectDomain(lastText, config);
+  const { domain, hits: domainHits } = detectDomain(cleanedLastText, config);
   rules_hit.push(`domain:${domain}(${domainHits})`);
 
   if (domain === 'code') {
@@ -220,7 +241,7 @@ export function classifyByRules(
   }
 
   // ── Fallback: legacy scoring for ambiguous cases ──
-  const scores = scoreCategories(lastText, config);
+  const scores = scoreCategories(cleanedLastText, config);
   const totalHits = scores.reduce((sum, s) => sum + s.hits, 0);
 
   if (totalHits === 0) {
