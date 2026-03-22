@@ -470,15 +470,28 @@ async function handleRequest(
       budget_downgraded: decision.decision_trace.budget_downgrade || false,
     });
 
-    // Send response
+    // Send response — rewrite model field to match the client's original request model
+    // This prevents OpenClaw from rejecting responses where the actual upstream model
+    // (e.g. google/gemini-2.5-flash) differs from the requested model (e.g. claude-sonnet-4-5)
+    let responseBody = fallbackResult.result.body || '{}';
+    if (fallbackResult.result.ok && body.model) {
+      try {
+        const parsed = JSON.parse(responseBody);
+        if (parsed.model) {
+          parsed.model = body.model;
+          responseBody = JSON.stringify(parsed);
+        }
+      } catch { /* keep original body if parse fails */ }
+    }
+
     if (!clientRes.headersSent) {
       if (fallbackResult.result.ok) {
         if (clientWantsStream) {
           // Convert buffered response to Anthropic SSE format
-          sendAsSSE(clientRes, fallbackResult.result.body || '{}');
+          sendAsSSE(clientRes, responseBody);
         } else {
           clientRes.writeHead(200, { 'Content-Type': 'application/json' });
-          clientRes.end(fallbackResult.result.body);
+          clientRes.end(responseBody);
         }
       } else {
         const status = fallbackResult.result.status || 502;
