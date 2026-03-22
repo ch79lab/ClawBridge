@@ -1,8 +1,8 @@
 {
   "routes": {
     "default": {
-      "model": "claude-haiku-4-5",
-      "upstream": "anthropic",
+      "model": "x-ai/grok-4.1-fast",
+      "upstream": "openrouter",
       "timeoutMs": 30000,
       "thinking": false
     },
