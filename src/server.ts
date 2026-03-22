@@ -82,7 +82,14 @@ function passthrough(
 
 // ── SSE wrapper (converts buffered JSON to Anthropic streaming format) ──
 
-function sendAsSSE(res: ServerResponse, jsonBody: string): void {
+const SSE_CHUNK_SIZE = 200; // chars per delta — mimics real Anthropic streaming
+const SSE_DELAY_MS = 15;   // ms between events — gives OpenClaw time to process
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function sendAsSSE(res: ServerResponse, jsonBody: string): Promise<void> {
   const msg = JSON.parse(jsonBody) as Record<string, unknown>;
   const content = msg.content as Array<Record<string, unknown>> | undefined;
   const text = content?.[0]?.text as string || '';
@@ -99,26 +106,43 @@ function sendAsSSE(res: ServerResponse, jsonBody: string): void {
     type: 'message_start',
     message: { id: msg.id, type: 'message', role: 'assistant', content: [], model: msg.model, stop_reason: null, usage: { input_tokens: usage?.input_tokens || 0, output_tokens: 0 } },
   })}\n\n`);
+  await sleep(SSE_DELAY_MS);
 
   // content_block_start
   res.write(`event: content_block_start\ndata: ${JSON.stringify({
     type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' },
   })}\n\n`);
+  await sleep(SSE_DELAY_MS);
 
-  // content_block_delta (send full text in one delta)
-  res.write(`event: content_block_delta\ndata: ${JSON.stringify({
-    type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text },
-  })}\n\n`);
+  // content_block_deltas — chunk text to mimic real streaming
+  for (let i = 0; i < text.length; i += SSE_CHUNK_SIZE) {
+    const chunk = text.slice(i, i + SSE_CHUNK_SIZE);
+    res.write(`event: content_block_delta\ndata: ${JSON.stringify({
+      type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: chunk },
+    })}\n\n`);
+    if (i + SSE_CHUNK_SIZE < text.length) {
+      await sleep(SSE_DELAY_MS);
+    }
+  }
+  // Handle empty text
+  if (text.length === 0) {
+    res.write(`event: content_block_delta\ndata: ${JSON.stringify({
+      type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: '' },
+    })}\n\n`);
+  }
+  await sleep(SSE_DELAY_MS);
 
   // content_block_stop
   res.write(`event: content_block_stop\ndata: ${JSON.stringify({
     type: 'content_block_stop', index: 0,
   })}\n\n`);
+  await sleep(SSE_DELAY_MS);
 
   // message_delta
   res.write(`event: message_delta\ndata: ${JSON.stringify({
     type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: usage?.output_tokens || 0 },
   })}\n\n`);
+  await sleep(SSE_DELAY_MS);
 
   // message_stop
   res.write(`event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n`);
@@ -533,7 +557,7 @@ async function handleRequest(
       if (fallbackResult.result.ok) {
         if (clientWantsStream) {
           // Convert buffered response to Anthropic SSE format
-          sendAsSSE(clientRes, responseBody);
+          await sendAsSSE(clientRes, responseBody);
         } else {
           clientRes.writeHead(200, { 'Content-Type': 'application/json' });
           clientRes.end(responseBody);

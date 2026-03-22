@@ -14,8 +14,18 @@ function checkPrivacyGate(
   const lower = message.toLowerCase();
 
   for (const keyword of config.privacy.keywords) {
-    if (lower.includes(keyword.toLowerCase())) {
-      return { isPrivate: true, reason: `keyword:"${keyword}"` };
+    const kw = keyword.toLowerCase();
+    // Short keywords (<=4 chars like "nda") require word boundary to avoid
+    // false positives (e.g. "profunda" matching "nda")
+    if (kw.length <= 4) {
+      const re = new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+      if (re.test(lower)) {
+        return { isPrivate: true, reason: `keyword:"${keyword}"` };
+      }
+    } else {
+      if (lower.includes(kw)) {
+        return { isPrivate: true, reason: `keyword:"${keyword}"` };
+      }
     }
   }
 
@@ -98,11 +108,12 @@ function countHits(text: string, keywords: string[]): number {
 
 // ── Domain detection ────────────────────────────────────────
 
-type Domain = 'code' | 'analysis' | 'reasoning' | 'action' | 'none';
+type Domain = 'code' | 'deep_analysis' | 'analysis' | 'reasoning' | 'action' | 'none';
 
 function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain; hits: number } {
   const codeKeywords = config.rules.code || [];
   const analysisKeywords = config.rules.analysis || [];
+  const deepAnalysisKeywords = config.rules.deep_analysis || [];
   const actionKeywords = config.rules.action || [];
   // Use dedicated reasoning rules (not privacy.complexity_keywords which is for private_simple/complex)
   const reasoningKeywords = config.rules.reasoning || config.privacy.complexity_keywords || [];
@@ -110,16 +121,19 @@ function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain
   const codeHits = countHits(lastText, codeKeywords)
     + (hasCodeBlocks(lastText) ? 2 : 0)
     + (hasFileReferences(lastText) ? 1 : 0);
+  const deepAnalysisHits = countHits(lastText, deepAnalysisKeywords);
   const analysisHits = countHits(lastText, analysisKeywords);
   const actionHits = countHits(lastText, actionKeywords);
   const reasoningHits = countHits(lastText, reasoningKeywords);
 
   // Find max hits across all domains
-  const maxHits = Math.max(codeHits, analysisHits, actionHits, reasoningHits);
+  const maxHits = Math.max(codeHits, deepAnalysisHits, analysisHits, actionHits, reasoningHits);
   if (maxHits === 0) return { domain: 'none', hits: 0 };
 
-  // Highest score wins. On tie priority: code > analysis > action > reasoning (cost-optimized)
+  // deep_analysis wins over analysis when it has more hits (specialized keywords)
+  // Highest score wins. On tie priority: code > deep_analysis > analysis > action > reasoning
   if (codeHits === maxHits) return { domain: 'code', hits: codeHits };
+  if (deepAnalysisHits === maxHits) return { domain: 'deep_analysis', hits: deepAnalysisHits };
   if (analysisHits === maxHits) return { domain: 'analysis', hits: analysisHits };
   if (actionHits === maxHits) return { domain: 'action', hits: actionHits };
   return { domain: 'reasoning', hits: reasoningHits };
@@ -215,12 +229,11 @@ export function classifyByRules(
   rules_hit.push(`domain:${domain}(${domainHits})`);
 
   if (domain === 'code') {
-    if (estimatedTokens > TOKEN_THRESHOLD) {
-      rules_hit.push(`tokens:${estimatedTokens}>threshold`);
-      return { category: 'code', confidence: 0.90, rules_hit };
-    }
-    // Code domain but under threshold → complex (Sonnet)
-    return { category: 'complex', confidence: 0.80, rules_hit };
+    return { category: 'code', confidence: 0.85, rules_hit };
+  }
+
+  if (domain === 'deep_analysis') {
+    return { category: 'deep_analysis', confidence: 0.85, rules_hit };
   }
 
   if (domain === 'analysis') {

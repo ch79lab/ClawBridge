@@ -211,9 +211,9 @@ describe('classifier_rules', () => {
   });
 
   describe('code domain detection', () => {
-    it('classifies as complex when code domain + tokens under threshold', () => {
+    it('classifies as code when code domain detected', () => {
       const result = classify('refactor the codebase and debug the implementation');
-      expect(result.category).toBe('complex');
+      expect(result.category).toBe('code');
       expect(result.rules_hit.some(r => r.startsWith('domain:code'))).toBe(true);
     });
 
