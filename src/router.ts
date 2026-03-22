@@ -53,6 +53,7 @@ export function extractUserText(body: AnthropicRequestBody): { recentText: strin
 // ── Escalation map ──────────────────────────────────────────
 
 const ESCALATION_MAP: Partial<Record<Category, Category>> = {
+  default: 'action',
   batch: 'action',
   action: 'analysis',
   analysis: 'complex',

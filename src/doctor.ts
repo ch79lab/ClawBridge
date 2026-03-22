@@ -110,7 +110,7 @@ function validateRouting(data: unknown): string | null {
   if (!cfg.rules) return 'Missing "rules" section';
 
   const routes = cfg.routes as Record<string, unknown>;
-  const required = ['complex', 'analysis', 'action', 'batch', 'private_simple', 'private_complex', 'vision', 'code', 'deep_analysis'];
+  const required = ['default', 'complex', 'analysis', 'action', 'batch', 'private_simple', 'private_complex', 'vision', 'code', 'deep_analysis'];
   const missing = required.filter(c => !routes[c]);
   if (missing.length > 0) return `Missing routes: ${missing.join(', ')}`;
 

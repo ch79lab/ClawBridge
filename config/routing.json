@@ -144,14 +144,13 @@
       "recomende",
       "recommend",
       "recomendação",
-      "analise",
-      "analyze",
       "avalie",
       "evaluate",
-      "compare",
       "pondere",
       "arquitetura",
-      "architecture"
+      "architecture",
+      "critica",
+      "critique"
     ]
   },
   "rules": {
@@ -160,12 +159,8 @@
       "architecture",
       "trade-off",
       "tradeoff",
-      "estratégia",
-      "strategy",
       "decisão",
       "decision",
-      "refatorar",
-      "refactor",
       "redesenhe",
       "redesign",
       "prós e contras",
@@ -174,10 +169,14 @@
       "migration",
       "escalabilidade",
       "scalability",
-      "considere",
-      "pondere",
       "ambiguidade",
-      "ambiguity"
+      "ambiguity",
+      "sistema distribuído",
+      "distributed system",
+      "monolito",
+      "monolith",
+      "microserviços",
+      "microservices"
     ],
     "analysis": [
       "analise",
@@ -200,8 +199,6 @@
       "explain",
       "interprete",
       "interpret",
-      "leia",
-      "read",
       "revise",
       "review",
       "documento",
@@ -219,7 +216,43 @@
       "extraia insights",
       "extract insights",
       "diagnóstico",
-      "diagnostic"
+      "diagnostic",
+      "levantamento",
+      "survey",
+      "métricas",
+      "metrics",
+      "indicadores",
+      "indicators",
+      "análise de dados",
+      "data analysis"
+    ],
+    "reasoning": [
+      "decide",
+      "decisão",
+      "trade-off",
+      "tradeoff",
+      "estratégia",
+      "strategy",
+      "risco",
+      "risk",
+      "recomende",
+      "recommend",
+      "recomendação",
+      "avalie",
+      "evaluate",
+      "pondere",
+      "critica",
+      "critique",
+      "o que tu acha",
+      "what do you think",
+      "qual a melhor",
+      "which is better",
+      "vale a pena",
+      "is it worth",
+      "faz sentido",
+      "makes sense",
+      "dilema",
+      "dilemma"
     ],
     "action": [
       "reescreva",
@@ -231,7 +264,6 @@
       "transforme",
       "transform",
       "corrija",
-      "fix",
       "ajuste",
       "adjust",
       "modifique",
@@ -242,10 +274,10 @@
       "simplify",
       "traduza",
       "translate",
-      "gere",
-      "generate",
-      "crie",
-      "create"
+      "gere código",
+      "generate code",
+      "melhore",
+      "improve"
     ],
     "batch": [
       "extraia",
@@ -254,11 +286,10 @@
       "classify",
       "parse",
       "parsing",
-      "cada",
-      "each",
+      "cada um",
+      "each one",
       "todos os",
       "all the",
-      "every",
       "em lote",
       "batch",
       "bulk",
@@ -269,7 +300,9 @@
       "processar",
       "process",
       "iterar",
-      "iterate"
+      "iterate",
+      "para cada",
+      "for each"
     ],
     "code": [
       "refactor",
@@ -286,13 +319,23 @@
       "commit",
       "merge",
       "branch",
-      "test",
-      "teste",
       "unit test",
       "integration test",
+      "test suite",
       "deploy",
       "pipeline",
-      "dockerfile"
+      "dockerfile",
+      "endpoint",
+      "middleware",
+      "database schema",
+      "API",
+      "backend",
+      "frontend",
+      "fullstack",
+      "stack trace",
+      "error log",
+      "type error",
+      "bug fix"
     ],
     "deep_analysis": [
       "sintetiza",
@@ -305,7 +348,9 @@
       "análise profunda",
       "deep analysis",
       "múltiplos documentos",
-      "multiple documents"
+      "multiple documents",
+      "cross-reference",
+      "referência cruzada"
     ]
   }
 }

@@ -219,8 +219,9 @@ describe('router', () => {
     expect(decision.upstream).toBe('google');
   });
 
-  it('privacy gate still checks conversation history', async () => {
+  it('privacy gate does NOT trigger from conversation history', async () => {
     // Previous message had "senha", current message is normal
+    // Privacy gate now only checks lastText to avoid false positives
     const body: AnthropicRequestBody = {
       model: 'claude-sonnet-4-5',
       messages: [
@@ -231,8 +232,9 @@ describe('router', () => {
       max_tokens: 1024,
     };
     const decision = await route(body);
-    expect(decision.decision_trace.privacy_gate).toBe(true);
-    expect(decision.upstream).toBe('anthropic');
+    expect(decision.decision_trace.privacy_gate).toBe(false);
+    // Should route by domain (analysis), not privacy
+    expect(decision.category).toBe('analysis');
   });
 
   it('includes fallback chain in decision', async () => {

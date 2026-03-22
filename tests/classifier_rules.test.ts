@@ -86,15 +86,17 @@ describe('classifier_rules', () => {
       expect(result.confidence).toBe(1.0);
     });
 
-    it('privacy gate uses recent context, not just last message', () => {
-      // recentText has "senha", but lastText does not
+    it('privacy gate uses only lastText, not conversation history', () => {
+      // recentText has "senha" in history, but lastText does not
+      // Privacy gate should NOT trigger from conversation history
       const result = classifyByRules(
         'a senha é 1234 resuma o documento',
         'resuma o documento',
         config,
       );
-      expect(result.category).toBe('private_simple');
-      expect(result.confidence).toBe(1.0);
+      // Should classify by domain (analysis), not by privacy from history
+      expect(result.category).toBe('analysis');
+      expect(result.confidence).toBeLessThan(1.0);
     });
   });
 

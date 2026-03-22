@@ -87,7 +87,8 @@ type Domain = 'code' | 'analysis' | 'reasoning' | 'none';
 function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain; hits: number } {
   const codeKeywords = config.rules.code || [];
   const analysisKeywords = config.rules.analysis || [];
-  const reasoningKeywords = config.privacy.complexity_keywords || [];
+  // Use dedicated reasoning rules (not privacy.complexity_keywords which is for private_simple/complex)
+  const reasoningKeywords = config.rules.reasoning || config.privacy.complexity_keywords || [];
 
   const codeHits = countHits(lastText, codeKeywords)
     + (hasCodeBlocks(lastText) ? 2 : 0)
@@ -160,8 +161,10 @@ export function classifyByRules(
   const rules_hit: string[] = [];
   const estimatedTokens = estimateTokens(lastText);
 
-  // ── Step 1: Privacy gate (recent context) ──
-  const privacy = checkPrivacyGate(recentText, config);
+  // ── Step 1: Privacy gate ──
+  // Keywords: check only lastText (current message intent, not conversation history)
+  // PII regexes + sensitive patterns: check lastText only (actual data in current message)
+  const privacy = checkPrivacyGate(lastText, config);
   if (privacy.isPrivate) {
     const isComplex = isComplexPrivate(lastText, config);
     const category: Category = isComplex ? 'private_complex' : 'private_simple';
@@ -220,7 +223,7 @@ export function classifyByRules(
 
   if (totalHits === 0) {
     rules_hit.push('no_keyword_hits');
-    return { category: 'action', confidence: 0.3, rules_hit };
+    return { category: 'default', confidence: 0.3, rules_hit };
   }
 
   scores.sort((a, b) => b.score - a.score || b.hits - a.hits);

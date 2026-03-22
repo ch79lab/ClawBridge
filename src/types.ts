@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 export type Category =
+  | 'default'
   | 'complex'
   | 'analysis'
   | 'action'
@@ -14,6 +15,7 @@ export type Category =
   | 'deep_analysis';
 
 export const CATEGORIES: readonly Category[] = [
+  'default',
   'complex',
   'analysis',
   'action',
@@ -102,9 +104,9 @@ export interface RoutingConfig {
     keywords: string[];
     pii_regexes: string[];
     sensitive_patterns: string[];
-    complexity_keywords: string[];
+    complexity_keywords: string[];  // used only for private_simple vs private_complex
   };
-  rules: Record<string, string[]>;
+  rules: Record<string, string[]>;  // includes 'reasoning' for domain detection
 }
 
 // ── Rate Limiting ────────────────────────────────────────
