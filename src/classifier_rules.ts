@@ -82,11 +82,12 @@ function countHits(text: string, keywords: string[]): number {
 
 // ── Domain detection ────────────────────────────────────────
 
-type Domain = 'code' | 'analysis' | 'reasoning' | 'none';
+type Domain = 'code' | 'analysis' | 'reasoning' | 'action' | 'none';
 
 function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain; hits: number } {
   const codeKeywords = config.rules.code || [];
   const analysisKeywords = config.rules.analysis || [];
+  const actionKeywords = config.rules.action || [];
   // Use dedicated reasoning rules (not privacy.complexity_keywords which is for private_simple/complex)
   const reasoningKeywords = config.rules.reasoning || config.privacy.complexity_keywords || [];
 
@@ -94,21 +95,18 @@ function detectDomain(lastText: string, config: RoutingConfig): { domain: Domain
     + (hasCodeBlocks(lastText) ? 2 : 0)
     + (hasFileReferences(lastText) ? 1 : 0);
   const analysisHits = countHits(lastText, analysisKeywords);
+  const actionHits = countHits(lastText, actionKeywords);
   const reasoningHits = countHits(lastText, reasoningKeywords);
 
-  // Highest score wins. On tie: code > analysis > reasoning (cost-optimized)
-  if (codeHits > analysisHits && codeHits > reasoningHits && codeHits > 0) {
-    return { domain: 'code', hits: codeHits };
-  }
-  if (analysisHits >= reasoningHits && analysisHits > 0) {
-    // Analysis wins ties with reasoning — analysis routes to cheaper Gemini
-    return { domain: 'analysis', hits: analysisHits };
-  }
-  if (reasoningHits > 0) {
-    return { domain: 'reasoning', hits: reasoningHits };
-  }
+  // Find max hits across all domains
+  const maxHits = Math.max(codeHits, analysisHits, actionHits, reasoningHits);
+  if (maxHits === 0) return { domain: 'none', hits: 0 };
 
-  return { domain: 'none', hits: 0 };
+  // Highest score wins. On tie priority: code > analysis > action > reasoning (cost-optimized)
+  if (codeHits === maxHits) return { domain: 'code', hits: codeHits };
+  if (analysisHits === maxHits) return { domain: 'analysis', hits: analysisHits };
+  if (actionHits === maxHits) return { domain: 'action', hits: actionHits };
+  return { domain: 'reasoning', hits: reasoningHits };
 }
 
 // ── Legacy scoring (for batch/action/complex fallback) ──────
@@ -211,6 +209,10 @@ export function classifyByRules(
       return { category: 'deep_analysis', confidence: 0.90, rules_hit };
     }
     return { category: 'analysis', confidence: 0.80, rules_hit };
+  }
+
+  if (domain === 'action') {
+    return { category: 'action', confidence: 0.75, rules_hit };
   }
 
   if (domain === 'reasoning') {
