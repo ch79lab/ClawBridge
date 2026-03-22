@@ -368,9 +368,18 @@ Média
 
 ## Bloco C — próximo
 
-- vision end-to-end via Telegram (depende de fix no pipeline imageModel do OpenClaw)
-- cost dashboard (endpoint `/v1/clawbridge/dashboard` com HTML)
-- T0 classifier re-enable (desabilitado por latência, avaliar com modelo local menor)
+### Prioridade 1 — Proteção
+- **C.1 Budget hard cap** — middleware que rejeita requests (HTTP 429) quando daily/monthly spend excede limite. Whitelist para heartbeat. Alerta Telegram antes de bloquear. Complexidade: baixa-média. Infra de tracking já existe.
+
+### Prioridade 2 — Otimização
+- **C.2 Anthropic prompt caching** — injetar `cache_control: {"type": "ephemeral"}` nos blocos de system prompt estáticos (SOUL.md, USER.md, AGENTS.md). Cache hits custam 90% menos. Economia ~$0.01-0.03/dia (compounding). Complexidade: média. Só para requests upstream Anthropic.
+- **C.3 Cost dashboard** — endpoint HTML `/v1/clawbridge/dashboard` com spend por modelo/categoria/dia.
+
+### Prioridade 3 — Melhorias
+- **C.4 Vision end-to-end via Telegram** — depende de fix no pipeline imageModel do OpenClaw
+- **C.5 T0 classifier re-enable** — desabilitado por latência, avaliar com modelo local menor
+
+### Prioridade 4 — Futuro
 - shadow routing
 - replay offline
 - session-aware adaptation
