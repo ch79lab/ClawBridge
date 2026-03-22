@@ -126,6 +126,28 @@ function sendAsSSE(res: ServerResponse, jsonBody: string): void {
   res.end();
 }
 
+// ── Anthropic prompt caching ─────────────────────────────────
+// Injects cache_control on system prompt blocks so repeated requests
+// within 5min get 90% cheaper input tokens on cached blocks.
+
+function injectCacheControl(body: AnthropicRequestBody): void {
+  if (!body.system) return;
+
+  // Convert string system to content block array
+  if (typeof body.system === 'string') {
+    body.system = [{ type: 'text', text: body.system, cache_control: { type: 'ephemeral' } }];
+    return;
+  }
+
+  // Array of content blocks — add cache_control to the last block
+  if (Array.isArray(body.system) && body.system.length > 0) {
+    const last = body.system[body.system.length - 1] as Record<string, unknown>;
+    if (!last.cache_control) {
+      last.cache_control = { type: 'ephemeral' };
+    }
+  }
+}
+
 // ── Routing reason builder ──────────────────────────────────
 
 function buildRoutingReason(decision: { category: string; model: string; upstream: string; decision_trace: { privacy_gate: boolean; budget_downgrade?: boolean; budget_original_model?: string; capability_upgrade?: boolean; capability_original_model?: string } }): string {
@@ -403,6 +425,7 @@ async function handleRequest(
     // Anthropic upstream: pipe directly (preserves streaming)
     if (decision.upstream === 'anthropic') {
       const pipeBody = { ...body, model: decision.model };
+      injectCacheControl(pipeBody);
       passthrough(clientReq, clientRes, JSON.stringify(pipeBody));
       const pipedLatency = Date.now() - startTime;
       log.info({

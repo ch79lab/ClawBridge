@@ -151,7 +151,7 @@ export interface AnthropicContentBlock {
 export interface AnthropicRequestBody {
   model: string;
   messages: AnthropicMessage[];
-  system?: string;
+  system?: string | Array<Record<string, unknown>>;
   max_tokens?: number;
   temperature?: number;
   tools?: unknown[];
