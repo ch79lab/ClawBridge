@@ -206,6 +206,37 @@ Completa. Health tracker in-memory (reseta no restart — intencional para fresh
 
 ---
 
+## Fase 3.5 — Multi-Provider & Routing Tiers v2 ✅
+
+### Objetivo
+Expandir de 2 providers (Anthropic + Google) para 3 (+ OpenRouter), adicionar 4 novos tiers (default, vision, code, deep_analysis) e hardening do classificador para produção via Telegram.
+
+### Entregas
+- ✅ OpenRouter como 3o provider (Grok 4.1 Fast, MiniMax M2.5)
+- ✅ Protocol translation OpenAI-compatible (`proxyToOpenAICompatible`)
+- ✅ 10 tiers operacionais (adicionados: default, vision, code, deep_analysis)
+- ✅ Multi-auth configurável (`config/auth.json` — API key, Bearer, URL param)
+- ✅ Rate limiting por tier (`config/rate-limits.json` — hourly/daily caps)
+- ✅ Metadata stripping — remove metadados OpenClaw/Telegram da classificação
+- ✅ Short-circuit classifier v2 (privacy → vision → batch → domain → legacy)
+- ✅ Model rewrite — resposta retorna com modelo original do request (transparência pro OpenClaw)
+- ✅ Remoção de OAuth/ChatGPT backend (não viável para acesso programático)
+- ✅ Sonnet 4-5 → 4-6, adicionado Gemini 3.1 Pro Preview
+- ✅ Doctor expandido (auth.json, rate-limits.json, OpenRouter connectivity)
+- ✅ 133 testes (9 suites)
+
+### Bugs corrigidos
+- Tool call detection desabilitado (OpenClaw envia tools[] em todo request)
+- Privacy gate restrito a lastText (evita false positives por histórico)
+- Domain detection com `rules.reasoning` separado de `privacy.complexity_keywords`
+- Fallback para `default` (não `action`) em zero-keyword messages
+- `convert to JSON` não classificava mais como `analysis` (keyword `data` genérico demais)
+
+### Status
+Completa. 9/10 tiers validados em produção via Telegram no Mac Mini M4. Vision funciona via API direta (ClawBridge → Gemini Flash); pendente integração end-to-end via Telegram (limitação do pipeline imageModel do OpenClaw).
+
+---
+
 ## Fase 4 — Session-Aware Router
 
 ### Objetivo
@@ -309,9 +340,10 @@ Média
 3. ✅ Fase 1 — Capability-Aware Router
 4. ✅ Fase 2 — Economic Router
 5. ✅ Fase 3 — SLO-Aware Router
-6. Fase 4 — Session-Aware Router
-7. Fase 5 — Outcome-Aware Learning
-8. Fase 6 — Specialized Agent Router
+6. ✅ Fase 3.5 — Multi-Provider & Routing Tiers v2
+7. Fase 4 — Session-Aware Router
+8. Fase 5 — Outcome-Aware Learning
+9. Fase 6 — Specialized Agent Router
 
 ---
 
@@ -336,6 +368,9 @@ Média
 
 ## Bloco C — próximo
 
+- vision end-to-end via Telegram (depende de fix no pipeline imageModel do OpenClaw)
+- cost dashboard (endpoint `/v1/clawbridge/dashboard` com HTML)
+- T0 classifier re-enable (desabilitado por latência, avaliar com modelo local menor)
 - shadow routing
 - replay offline
 - session-aware adaptation
