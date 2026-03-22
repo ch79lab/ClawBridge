@@ -184,10 +184,9 @@ export function classifyByRules(
   }
 
   // ── Step 4: Tool call detection → action ──
-  if (body && hasToolCall(body)) {
-    rules_hit.push('tool_call_detected');
-    return { category: 'action', confidence: 0.90, rules_hit };
-  }
+  // NOTE: Skipped. OpenClaw sends tools[] in every request as "available capabilities",
+  // not as explicit tool-use intent. Routing by tools presence would classify everything
+  // as "action". Tool-use capability is handled by the capability-aware upgrade system instead.
 
   // ── Step 5: Domain + complexity classification ──
   const { domain, hits: domainHits } = detectDomain(lastText, config);

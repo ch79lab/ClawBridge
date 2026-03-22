@@ -228,16 +228,17 @@ describe('classifier_rules', () => {
   });
 
   describe('tool call detection', () => {
-    it('classifies as action when tools present in body', () => {
+    it('does NOT short-circuit to action just because tools are present in body', () => {
+      // OpenClaw sends tools[] in every request as "available capabilities"
+      // This should NOT trigger action at 0.9 confidence — domain detection should proceed
       const body: AnthropicRequestBody = {
         model: 'test',
-        messages: [{ role: 'user', content: 'call the function' }],
+        messages: [{ role: 'user', content: 'avalie a arquitetura e recomende a melhor estratégia' }],
         tools: [{ name: 'get_weather', description: 'get weather', input_schema: {} }],
       };
-      const result = classify('call the function', body);
-      expect(result.category).toBe('action');
-      expect(result.confidence).toBe(0.90);
-      expect(result.rules_hit).toContain('tool_call_detected');
+      const result = classify('avalie a arquitetura e recomende a melhor estratégia', body);
+      // Should detect reasoning domain → complex, not action from tools
+      expect(result.category).toBe('complex');
     });
   });
 
