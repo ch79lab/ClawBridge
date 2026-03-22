@@ -344,6 +344,28 @@ async function handleRequest(
 
     const clientWantsStream = body.stream === true;
 
+    // Budget hard cap — reject requests when spend exceeds limit
+    const budgetGate = await getBudgetStatus();
+    if (budgetGate.level === 'hard_stop') {
+      log.warn({
+        msg: 'budget_hard_stop',
+        request_id: requestId,
+        daily_spend: budgetGate.daily_spend_usd,
+        daily_limit: budgetGate.daily_limit_usd,
+        monthly_spend: budgetGate.monthly_spend_usd,
+        monthly_budget: budgetGate.monthly_budget_usd,
+      });
+      clientRes.writeHead(429, { 'Content-Type': 'application/json' });
+      clientRes.end(JSON.stringify({
+        type: 'error',
+        error: {
+          type: 'budget_exceeded',
+          message: `Budget limit reached. Daily: $${budgetGate.daily_spend_usd.toFixed(2)}/$${budgetGate.daily_limit_usd.toFixed(2)}, Monthly: $${budgetGate.monthly_spend_usd.toFixed(2)}/$${budgetGate.monthly_budget_usd.toFixed(2)}. Requests are blocked until the next budget period.`,
+        },
+      }));
+      return;
+    }
+
     // Route (classify without modifying the body)
     const decision = await route(body);
 
