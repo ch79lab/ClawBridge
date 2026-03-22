@@ -1,6 +1,6 @@
 {
   "models": {
-    "claude-sonnet-4-6": {
+    "claude-sonnet-4-5": {
       "capabilities": ["tool_use", "vision", "long_context", "code", "multilingual", "thinking"],
       "max_context_tokens": 200000,
       "max_output_tokens": 16384,
@@ -74,6 +74,6 @@
   "upgrade_path": {
     "gemini-2.5-flash-lite": "gemini-2.5-flash",
     "gemini-2.5-flash": "claude-haiku-4-5",
-    "claude-haiku-4-5": "claude-sonnet-4-6"
+    "claude-haiku-4-5": "claude-sonnet-4-5"
   }
 }

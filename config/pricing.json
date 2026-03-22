@@ -1,6 +1,6 @@
 {
   "models": {
-    "claude-sonnet-4-6": {
+    "claude-sonnet-4-5": {
       "input_per_1m": 3.00,
       "output_per_1m": 15.00
     },

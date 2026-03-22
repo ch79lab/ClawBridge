@@ -13,7 +13,7 @@
       "thinking": false
     },
     "complex": {
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-4-5",
       "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
@@ -55,15 +55,15 @@
       "thinking": false
     },
     "private_complex": {
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-4-5",
       "upstream": "anthropic",
       "timeoutMs": 60000,
       "thinking": false
     }
   },
   "fallback_map": {
-    "code":          { "model": "claude-sonnet-4-6",     "upstream": "anthropic", "timeoutMs": 60000 },
-    "deep_analysis": { "model": "claude-sonnet-4-6",     "upstream": "anthropic", "timeoutMs": 60000 },
+    "code":          { "model": "claude-sonnet-4-5",     "upstream": "anthropic", "timeoutMs": 60000 },
+    "deep_analysis": { "model": "claude-sonnet-4-5",     "upstream": "anthropic", "timeoutMs": 60000 },
     "vision":        { "model": "claude-haiku-4-5",      "upstream": "anthropic", "timeoutMs": 30000 },
     "_error":        { "model": "gemini-2.5-flash-lite", "upstream": "google",    "timeoutMs": 20000 }
   },
@@ -84,7 +84,7 @@
       "timeoutMs": 30000
     },
     {
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-4-5",
       "upstream": "anthropic",
       "timeoutMs": 60000
     }
