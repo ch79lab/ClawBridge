@@ -4,7 +4,8 @@
 
 import { request as httpRequest, type IncomingMessage, type ServerResponse } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { getAnthropicApiKey, getAnthropicBaseUrl, getGoogleApiKey, getOllamaUrl, hasGoogleApiKey } from './config.js';
+import { getAnthropicApiKey, getAnthropicBaseUrl, getGoogleApiKey, getOllamaUrl, hasGoogleApiKey, authConfig } from './config.js';
+import { getProviderAuth, buildAuthHeaders, buildAuthUrlParam } from './auth.js';
 import { log } from './logger.js';
 import type { AnthropicRequestBody, UpstreamResult } from './types.js';
 
@@ -139,6 +140,124 @@ function fromGeminiResponse(
   };
 }
 
+// ── OpenAI Chat Completions Protocol Translation ────────────
+
+interface OpenAIChatMessage {
+  role: 'system' | 'user' | 'assistant' | 'developer';
+  content: string | Array<Record<string, unknown>>;
+}
+
+export function toOpenAIBody(body: AnthropicRequestBody, model: string): Record<string, unknown> {
+  const messages: OpenAIChatMessage[] = [];
+
+  // System message → first message with role "system"
+  if (body.system) {
+    const systemText = typeof body.system === 'string'
+      ? body.system
+      : JSON.stringify(body.system);
+    messages.push({ role: 'system', content: systemText });
+  }
+
+  // Convert messages
+  for (const m of body.messages || []) {
+    const role = m.role === 'assistant' ? 'assistant' : 'user';
+
+    if (typeof m.content === 'string') {
+      messages.push({ role, content: m.content });
+    } else if (Array.isArray(m.content)) {
+      // Check for image blocks (vision)
+      const hasImages = m.content.some(b => b.type === 'image' || b.type === 'image_url');
+
+      if (hasImages) {
+        // OpenAI vision format: array of content parts
+        const parts: Array<Record<string, unknown>> = [];
+        for (const block of m.content) {
+          if (block.type === 'text') {
+            parts.push({ type: 'text', text: block.text || '' });
+          } else if (block.type === 'image') {
+            // Anthropic base64 image → OpenAI image_url
+            const source = block.source as Record<string, string> | undefined;
+            if (source?.type === 'base64') {
+              parts.push({
+                type: 'image_url',
+                image_url: { url: `data:${source.media_type};base64,${source.data}` },
+              });
+            }
+          } else if (block.type === 'image_url') {
+            parts.push(block);
+          }
+        }
+        messages.push({ role, content: parts });
+      } else {
+        // Text-only: concatenate
+        const text = m.content
+          .filter(b => b.type === 'text')
+          .map(b => b.text || '')
+          .join('\n');
+        messages.push({ role, content: text });
+      }
+    }
+  }
+
+  const result: Record<string, unknown> = {
+    model,
+    messages,
+    stream: false,
+  };
+
+  if (body.max_tokens) result.max_tokens = body.max_tokens;
+  if (body.temperature !== undefined) result.temperature = body.temperature;
+
+  // Tool use translation: Anthropic → OpenAI format
+  if (body.tools && body.tools.length > 0) {
+    result.tools = (body.tools as Array<Record<string, unknown>>).map(tool => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.input_schema,
+      },
+    }));
+  }
+
+  return result;
+}
+
+export function fromOpenAIResponse(
+  data: Record<string, unknown>,
+  model: string,
+): Record<string, unknown> {
+  const choices = data.choices as Array<Record<string, unknown>> | undefined;
+  let text = '';
+
+  if (choices && choices.length > 0) {
+    const message = choices[0].message as Record<string, unknown> | undefined;
+    text = (message?.content as string) || '';
+  }
+
+  const usage = data.usage as Record<string, number> | undefined;
+
+  // Map finish_reason to stop_reason
+  const finishReason = choices?.[0]?.finish_reason as string | undefined;
+  const stopReason = finishReason === 'stop' ? 'end_turn'
+    : finishReason === 'length' ? 'max_tokens'
+    : finishReason === 'tool_calls' ? 'tool_use'
+    : 'end_turn';
+
+  return {
+    id: `msg_openai_${Date.now()}`,
+    type: 'message',
+    role: 'assistant',
+    model: `openai/${model}`,
+    content: [{ type: 'text', text }],
+    stop_reason: stopReason,
+    usage: {
+      input_tokens: usage?.prompt_tokens || 0,
+      output_tokens: usage?.completion_tokens || 0,
+    },
+  };
+}
+
 // ── Proxy Functions ─────────────────────────────────────────
 
 export async function proxyToOllama(
@@ -182,11 +301,17 @@ export async function proxyToGoogle(
   model: string,
   timeoutMs: number,
 ): Promise<UpstreamResult> {
-  if (!hasGoogleApiKey()) {
-    return { ok: false, error: 'GOOGLE_API_KEY not configured' };
+  const providerAuth = getProviderAuth('google', authConfig);
+  let url: string;
+  if (providerAuth) {
+    const urlParam = buildAuthUrlParam(providerAuth);
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?${urlParam}`;
+  } else {
+    if (!hasGoogleApiKey()) {
+      return { ok: false, error: 'GOOGLE_API_KEY not configured' };
+    }
+    url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getGoogleApiKey()}`;
   }
-  const apiKey = getGoogleApiKey();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const payload = JSON.stringify(toGeminiBody(body));
 
   try {
@@ -227,7 +352,11 @@ export function proxyToAnthropic(
     const baseUrl = new URL(getAnthropicBaseUrl());
     const isHttps = baseUrl.protocol === 'https:';
     const requester = isHttps ? httpsRequest : httpRequest;
-    const apiKey = getAnthropicApiKey();
+
+    const providerAuth = getProviderAuth('anthropic', authConfig);
+    const authHeaders = providerAuth
+      ? buildAuthHeaders(providerAuth)
+      : { 'x-api-key': getAnthropicApiKey() };
 
     const payload = JSON.stringify({ ...body, model });
 
@@ -240,7 +369,7 @@ export function proxyToAnthropic(
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload),
-          'x-api-key': apiKey,
+          ...authHeaders,
           'anthropic-version': '2023-06-01',
         },
         timeout: timeoutMs,
@@ -273,4 +402,49 @@ export function proxyToAnthropic(
     req.write(payload);
     req.end();
   });
+}
+
+export async function proxyToOpenAI(
+  body: AnthropicRequestBody,
+  model: string,
+  timeoutMs: number,
+): Promise<UpstreamResult> {
+  const providerAuth = getProviderAuth('openai', authConfig);
+  if (!providerAuth) {
+    return { ok: false, error: 'OpenAI provider not configured in auth.json' };
+  }
+
+  const openaiHeaders = buildAuthHeaders(providerAuth);
+  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com';
+  const url = `${baseUrl}/v1/chat/completions`;
+  const payload = JSON.stringify(toOpenAIBody(body, model));
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...openaiHeaders,
+      },
+      body: payload,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      return { ok: false, status: response.status, body: errBody, error: `openai ${response.status}` };
+    }
+
+    const raw = await response.json() as Record<string, unknown>;
+    const anthropicResponse = fromOpenAIResponse(raw, model);
+    return { ok: true, status: 200, body: JSON.stringify(anthropicResponse) };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
 }

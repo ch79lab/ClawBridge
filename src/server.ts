@@ -4,7 +4,8 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { getPort, isShadowMode, getAnthropicBaseUrl, getAnthropicApiKey, routingConfig } from './config.js';
+import { getPort, isShadowMode, getAnthropicBaseUrl, getAnthropicApiKey, routingConfig, authConfig } from './config.js';
+import { getProviderAuth, buildAuthHeaders } from './auth.js';
 import { log, withRequestContext } from './logger.js';
 import { route, extractUserText } from './router.js';
 import { executeWithFallback } from './fallback.js';
@@ -39,10 +40,15 @@ function passthrough(
   const isHttps = baseUrl.protocol === 'https:';
   const requester = isHttps ? httpsRequest : httpRequest;
 
+  const providerAuth = getProviderAuth('anthropic', authConfig);
+  const upstreamAuthHeaders = providerAuth
+    ? buildAuthHeaders(providerAuth)
+    : { 'x-api-key': getAnthropicApiKey() };
+
   const headers: Record<string, string | string[] | undefined> = {
     ...clientReq.headers,
     host: baseUrl.hostname,
-    'x-api-key': getAnthropicApiKey(),
+    ...upstreamAuthHeaders,
     'content-length': String(Buffer.byteLength(rawBody)),
   };
 

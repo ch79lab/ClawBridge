@@ -5,7 +5,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { RoutingConfig, PricingConfig, BudgetConfig, CapabilitiesConfig } from './types.js';
+import type { RoutingConfig, PricingConfig, BudgetConfig, CapabilitiesConfig, AuthConfig } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -109,6 +109,20 @@ function loadCapabilitiesConfig(): CapabilitiesConfig | null {
 }
 
 export const capabilitiesConfig: CapabilitiesConfig | null = loadCapabilitiesConfig();
+
+// ── Load auth.json ──────────────────────────────────────
+
+function loadAuthConfig(): AuthConfig | null {
+  const configPath = join(ROOT, 'config', 'auth.json');
+  if (!existsSync(configPath)) return null;
+  try {
+    return JSON.parse(readFileSync(configPath, 'utf8')) as AuthConfig;
+  } catch {
+    return null;
+  }
+}
+
+export const authConfig: AuthConfig | null = loadAuthConfig();
 
 // ── Environment accessors ───────────────────────────────────
 

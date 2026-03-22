@@ -147,6 +147,57 @@ function validateCapabilities(data: unknown): string | null {
   return null;
 }
 
+// ── Auth config ──────────────────────────────────────────
+
+function checkAuthConfig(): void {
+  const path = join(ROOT, 'config', 'auth.json');
+  if (!existsSync(path)) {
+    warn('config/auth.json', 'Not found. Using hardcoded API key auth (backward-compatible).');
+    return;
+  }
+
+  try {
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    if (!data.providers || typeof data.providers !== 'object') {
+      fail('config/auth.json', 'Missing "providers" section');
+      return;
+    }
+
+    const providers = data.providers as Record<string, Record<string, string>>;
+    let hasIssue = false;
+
+    for (const [name, config] of Object.entries(providers)) {
+      const envVar = config.credential_env;
+      if (!envVar) {
+        fail(`auth:${name}`, 'Missing "credential_env"');
+        hasIssue = true;
+        continue;
+      }
+
+      // Read from .env file or process.env
+      const envPath = join(ROOT, '.env');
+      let envValue = process.env[envVar];
+      if (!envValue && existsSync(envPath)) {
+        const envContent = readFileSync(envPath, 'utf8');
+        const match = envContent.match(new RegExp(`^${envVar}=(.+)$`, 'm'));
+        if (match) envValue = match[1].trim().replace(/^["']|["']$/g, '');
+      }
+
+      if (!envValue || envValue === '...' || envValue === 'sk-ant-...' || envValue === 'sk-...') {
+        warn(`auth:${name}`, `${envVar} not set or placeholder. ${name} routes will fail.`);
+      } else {
+        ok(`auth:${name}`, `${config.method} via ${config.header} (${envVar}=${envValue.slice(0, 8)}...)`);
+      }
+    }
+
+    if (!hasIssue) {
+      ok('config/auth.json', `Valid — ${Object.keys(providers).length} providers configured`);
+    }
+  } catch (e) {
+    fail('config/auth.json', `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 // ── Data directory ───────────────────────────────────────
 
 function checkDataDir(): void {
@@ -251,6 +302,7 @@ async function main(): Promise<void> {
   checkConfig('pricing.json', false, validatePricing);
   checkConfig('budget.json', false, validateBudget);
   checkConfig('capabilities.json', false, validateCapabilities);
+  checkAuthConfig();
   checkDataDir();
   checkRoutingCoherence();
 
@@ -259,6 +311,7 @@ async function main(): Promise<void> {
   await checkPort(port);
   await checkUpstream('anthropic', 'https://api.anthropic.com/v1/messages');
   await checkUpstream('google', 'https://generativelanguage.googleapis.com/v1beta/models');
+  await checkUpstream('openai', 'https://api.openai.com/v1/models');
 
   // Print results
   let hasFailure = false;

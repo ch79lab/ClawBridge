@@ -4,7 +4,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { log } from './logger.js';
-import { proxyToAnthropic, proxyToGoogle, proxyToOllama } from './upstream.js';
+import { proxyToAnthropic, proxyToGoogle, proxyToOllama, proxyToOpenAI } from './upstream.js';
 import type { AnthropicRequestBody, FallbackStep, RoutingDecision, UpstreamResult } from './types.js';
 
 export interface FallbackResult {
@@ -31,6 +31,8 @@ async function callUpstream(
       return proxyToGoogle(body, model, timeoutMs);
     case 'anthropic':
       return proxyToAnthropic(clientReq, clientRes, body, model, timeoutMs);
+    case 'openai':
+      return proxyToOpenAI(body, model, timeoutMs);
     default:
       return { ok: false, error: `unknown upstream: ${upstream}` };
   }

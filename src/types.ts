@@ -19,7 +19,7 @@ export const CATEGORIES: readonly Category[] = [
   'private_complex',
 ] as const;
 
-export type Upstream = 'ollama' | 'anthropic' | 'google';
+export type Upstream = 'ollama' | 'anthropic' | 'google' | 'openai';
 
 // ── Classifier ──────────────────────────────────────────────
 
@@ -291,6 +291,21 @@ export interface RouteExplanation {
     original_model?: string;
   };
   fallback_chain: Array<{ model: string; upstream: Upstream }>;
+}
+
+// ── Auth ────────────────────────────────────────────────────
+
+export type AuthMethod = 'api_key' | 'token' | 'oauth';
+export type AuthHeaderType = 'x-api-key' | 'authorization_bearer' | 'url_param';
+
+export interface ProviderAuthConfig {
+  method: AuthMethod;
+  credential_env: string;
+  header: AuthHeaderType;
+}
+
+export interface AuthConfig {
+  providers: Record<string, ProviderAuthConfig>;
 }
 
 // ── Log entry ───────────────────────────────────────────────
